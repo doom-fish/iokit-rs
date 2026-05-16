@@ -1,11 +1,11 @@
 [package]
 name = "iokit"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/iokit-rs"
 repository = "https://github.com/doom-fish/iokit-rs"
-description = "Safe Rust bindings for Apple's IOKit user-space APIs — registry lookup, power assertions, and power-management snapshots on macOS"
+description = "Safe Rust bindings for Apple's IOKit user-space APIs with a Swift bridge for services, registry, power management, and power sources on macOS"
 authors = ["Per Johansson <per@doom.fish>"]
 keywords = ["iokit", "macos", "hardware", "power", "registry"]
 categories = ["api-bindings", "os::macos-apis", "hardware-support"]
@@ -14,13 +14,20 @@ readme = "README.md"
 build = "build.rs"
 include = [
     "src/**/*",
+    "swift-bridge/**/*",
     "examples/**/*",
+    "tests/**/*",
     "build.rs",
     "Cargo.toml",
     "README.md",
+    "COVERAGE.md",
     "LICENSE-*",
     "CHANGELOG.md",
 ]
+
+[features]
+default = ["raw-ffi"]
+raw-ffi = []
 
 [lints.rust]
 

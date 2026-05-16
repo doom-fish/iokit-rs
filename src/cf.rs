@@ -1,8 +1,8 @@
 //! CoreFoundation snapshot helpers used by the safe `IOKit` wrappers.
 
-use crate::{error::IoKitError, ffi, Result};
+use crate::ffi_impl as ffi;
 use core::{ffi::c_char, ptr};
-use std::{collections::BTreeMap, ffi::{CStr, CString}};
+use std::{collections::BTreeMap, ffi::CStr};
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -31,41 +31,6 @@ impl CFValue {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct CFStringOwned {
-    raw: ffi::CFStringRef,
-}
-
-impl CFStringOwned {
-    pub(crate) fn new(value: &str) -> Result<Self> {
-        let c_value = CString::new(value)
-            .map_err(|_| IoKitError::InvalidArgument("string contains interior NUL byte".to_owned()))?;
-        let raw = unsafe {
-            ffi::CFStringCreateWithCString(
-                ffi::kCFAllocatorDefault,
-                c_value.as_ptr(),
-                ffi::kCFStringEncodingUTF8,
-            )
-        };
-        if raw.is_null() {
-            return Err(IoKitError::UnexpectedNull("CFStringCreateWithCString"));
-        }
-        Ok(Self { raw })
-    }
-
-    pub(crate) const fn as_raw(&self) -> ffi::CFStringRef {
-        self.raw
-    }
-}
-
-impl Drop for CFStringOwned {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::CFRelease(self.raw);
-        }
-    }
-}
-
 pub(crate) unsafe fn string_from_cf(raw: ffi::CFStringRef) -> Option<String> {
     if raw.is_null() {
         return None;
@@ -74,16 +39,15 @@ pub(crate) unsafe fn string_from_cf(raw: ffi::CFStringRef) -> Option<String> {
     let len = ffi::CFStringGetLength(raw);
     let cap = len.saturating_mul(4).saturating_add(1);
     let mut buffer = vec![0 as c_char; usize::try_from(cap).ok()?];
-    let ok = ffi::CFStringGetCString(
-        raw,
-        buffer.as_mut_ptr(),
-        cap,
-        ffi::kCFStringEncodingUTF8,
-    );
+    let ok = ffi::CFStringGetCString(raw, buffer.as_mut_ptr(), cap, ffi::kCFStringEncodingUTF8);
     if !ok {
         return None;
     }
-    Some(CStr::from_ptr(buffer.as_ptr()).to_string_lossy().into_owned())
+    Some(
+        CStr::from_ptr(buffer.as_ptr())
+            .to_string_lossy()
+            .into_owned(),
+    )
 }
 
 pub(crate) unsafe fn take_value(raw: ffi::CFTypeRef) -> Option<CFValue> {
