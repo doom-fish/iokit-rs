@@ -37,6 +37,35 @@ pub const CPU_POWER_LIMIT_PROCESSOR_SPEED_KEY: &str =
 pub const CPU_POWER_LIMIT_PROCESSOR_COUNT_KEY: &str =
     ffi_impl::K_IOPMCPUPowerLimitProcessorCountKey;
 pub const CPU_POWER_LIMIT_SCHEDULER_TIME_KEY: &str = ffi_impl::K_IOPMCPUPowerLimitSchedulerTimeKey;
+pub const ASSERTION_TIMEOUT_KEY: &str = ffi_impl::K_IOPMAssertionTimeoutKey;
+pub const ASSERTION_TIMEOUT_ACTION_KEY: &str = ffi_impl::K_IOPMAssertionTimeoutActionKey;
+pub const ASSERTION_TIMEOUT_ACTION_LOG: &str = ffi_impl::K_IOPMAssertionTimeoutActionLog;
+pub const ASSERTION_TIMEOUT_ACTION_TURN_OFF: &str =
+    ffi_impl::K_IOPMAssertionTimeoutActionTurnOff;
+pub const ASSERTION_TIMEOUT_ACTION_RELEASE: &str =
+    ffi_impl::K_IOPMAssertionTimeoutActionRelease;
+pub const ASSERTION_RETAIN_COUNT_KEY: &str = ffi_impl::K_IOPMAssertionRetainCountKey;
+pub const ASSERTION_NAME_KEY: &str = ffi_impl::K_IOPMAssertionNameKey;
+pub const ASSERTION_DETAILS_KEY: &str = ffi_impl::K_IOPMAssertionDetailsKey;
+pub const ASSERTION_HUMAN_READABLE_REASON_KEY: &str =
+    ffi_impl::K_IOPMAssertionHumanReadableReasonKey;
+pub const ASSERTION_LOCALIZATION_BUNDLE_PATH_KEY: &str =
+    ffi_impl::K_IOPMAssertionLocalizationBundlePathKey;
+pub const ASSERTION_FRAMEWORK_ID_KEY: &str = ffi_impl::K_IOPMAssertionFrameworkIDKey;
+pub const ASSERTION_PLUGIN_ID_KEY: &str = ffi_impl::K_IOPMAssertionPlugInIDKey;
+pub const ASSERTION_TYPE_KEY: &str = ffi_impl::K_IOPMAssertionTypeKey;
+pub const ASSERTION_LEVEL_KEY: &str = ffi_impl::K_IOPMAssertionLevelKey;
+pub const SYSTEM_LOAD_ADVISORY_NOTIFY_NAME: &str = ffi_impl::K_IOSystemLoadAdvisoryNotifyName;
+pub const SYSTEM_LOAD_ADVISORY_USER_LEVEL_KEY: &str =
+    ffi_impl::K_IOSystemLoadAdvisoryUserLevelKey;
+pub const SYSTEM_LOAD_ADVISORY_BATTERY_LEVEL_KEY: &str =
+    ffi_impl::K_IOSystemLoadAdvisoryBatteryLevelKey;
+pub const SYSTEM_LOAD_ADVISORY_THERMAL_LEVEL_KEY: &str =
+    ffi_impl::K_IOSystemLoadAdvisoryThermalLevelKey;
+pub const SYSTEM_LOAD_ADVISORY_COMBINED_LEVEL_KEY: &str =
+    ffi_impl::K_IOSystemLoadAdvisoryCombinedLevelKey;
+pub const CPU_POWER_NOTIFICATION_KEY: &str = ffi_impl::K_IOPMCPUPowerNotificationKey;
+pub const THERMAL_WARNING_NOTIFICATION_KEY: &str = ffi_impl::K_IOPMThermalWarningNotificationKey;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PowerAssertionLevel {
@@ -83,6 +112,26 @@ impl ThermalWarningLevel {
             ffi_impl::kIOPMThermalWarningLevelNormal => Self::Normal,
             ffi_impl::kIOPMThermalWarningLevelDanger => Self::Danger,
             ffi_impl::kIOPMThermalWarningLevelCrisis => Self::Crisis,
+            other => Self::Unknown(other),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum SystemLoadAdvisoryLevel {
+    Bad,
+    Ok,
+    Great,
+    Unknown(i32),
+}
+
+impl SystemLoadAdvisoryLevel {
+    pub const fn from_raw(raw: i32) -> Self {
+        match raw {
+            ffi_impl::kIOSystemLoadAdvisoryLevelBad => Self::Bad,
+            ffi_impl::kIOSystemLoadAdvisoryLevelOK => Self::Ok,
+            ffi_impl::kIOSystemLoadAdvisoryLevelGreat => Self::Great,
             other => Self::Unknown(other),
         }
     }
@@ -219,6 +268,14 @@ pub fn thermal_warning_level() -> Result<ThermalWarningLevel> {
         "IOPMGetThermalWarningLevel",
     )?;
     Ok(ThermalWarningLevel::from_raw(level))
+}
+
+pub fn system_load_advisory() -> SystemLoadAdvisoryLevel {
+    SystemLoadAdvisoryLevel::from_raw(unsafe { ffi_impl::IOGetSystemLoadAdvisory() })
+}
+
+pub fn copy_system_load_advisory_detailed() -> Option<CFValue> {
+    unsafe { take_value(ffi_impl::IOCopySystemLoadAdvisoryDetailed().cast()) }
 }
 
 pub fn copy_assertions_by_process() -> Result<CFValue> {

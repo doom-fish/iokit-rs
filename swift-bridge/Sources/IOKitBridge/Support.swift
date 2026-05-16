@@ -179,3 +179,51 @@ func powerAssertionHolder(_ raw: UnsafeMutableRawPointer?) -> PowerAssertionHold
 func powerSourcesInfoHolder(_ raw: UnsafeMutableRawPointer?) -> PowerSourcesInfoHolder? {
     anyObject(raw, as: PowerSourcesInfoHolder.self)
 }
+
+@_cdecl("iokit_swift_wrap_service")
+public func iokit_swift_wrap_service(_ service: io_service_t) -> UnsafeMutableRawPointer? {
+    guard service != 0 else {
+        return nil
+    }
+    return retainOpaque(IOObjectHolder(service))
+}
+
+@_cdecl("iokit_swift_service_raw")
+public func iokit_swift_service_raw(_ service: UnsafeMutableRawPointer?) -> io_service_t {
+    guard let service = ioObjectHolder(service) else {
+        return 0
+    }
+    return service.raw
+}
+
+@_cdecl("iokit_swift_wrap_registry_entry")
+public func iokit_swift_wrap_registry_entry(_ entry: io_registry_entry_t) -> UnsafeMutableRawPointer? {
+    guard entry != 0 else {
+        return nil
+    }
+    return retainOpaque(IOObjectHolder(entry))
+}
+
+@_cdecl("iokit_swift_wrap_iterator")
+public func iokit_swift_wrap_iterator(_ iterator: io_iterator_t) -> UnsafeMutableRawPointer? {
+    guard iterator != 0 else {
+        return nil
+    }
+    return retainOpaque(IteratorHolder(iterator))
+}
+
+@_cdecl("iokit_swift_iterator_enter_entry")
+public func iokit_swift_iterator_enter_entry(_ iterator: UnsafeMutableRawPointer?) -> kern_return_t {
+    guard let iterator = iteratorHolder(iterator) else {
+        return kern_return_t(bitPattern: UInt32.max)
+    }
+    return IORegistryIteratorEnterEntry(iterator.raw)
+}
+
+@_cdecl("iokit_swift_iterator_exit_entry")
+public func iokit_swift_iterator_exit_entry(_ iterator: UnsafeMutableRawPointer?) -> kern_return_t {
+    guard let iterator = iteratorHolder(iterator) else {
+        return kern_return_t(bitPattern: UInt32.max)
+    }
+    return IORegistryIteratorExitEntry(iterator.raw)
+}

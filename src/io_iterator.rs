@@ -4,7 +4,12 @@
     clippy::must_use_candidate
 )]
 
-use crate::{bridge, io_registry::RegistryEntry, io_service::Service, object::nonnull};
+use crate::{
+    bridge,
+    io_registry::RegistryEntry,
+    io_service::Service,
+    object::{io_result, nonnull},
+};
 use core::ffi::c_void;
 use std::ptr::NonNull;
 
@@ -28,6 +33,20 @@ impl ObjectIterator {
 
     pub fn reset(&mut self) {
         unsafe { bridge::iokit_swift_iterator_reset(self.as_ptr()) };
+    }
+
+    pub fn enter_entry(&mut self) -> crate::Result<()> {
+        io_result(
+            unsafe { bridge::iokit_swift_iterator_enter_entry(self.as_ptr()) },
+            "IORegistryIteratorEnterEntry",
+        )
+    }
+
+    pub fn exit_entry(&mut self) -> crate::Result<()> {
+        io_result(
+            unsafe { bridge::iokit_swift_iterator_exit_entry(self.as_ptr()) },
+            "IORegistryIteratorExitEntry",
+        )
     }
 
     pub fn next_service(&mut self) -> Option<Service> {

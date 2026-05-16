@@ -10,6 +10,8 @@ unsafe extern "C" {
     pub fn iokit_swift_service_matching_entry_id(entry_id: u64) -> *mut c_void;
     pub fn iokit_swift_matching_services(name: *const c_char) -> *mut c_void;
     pub fn iokit_swift_name_matching_services(name: *const c_char) -> *mut c_void;
+    pub fn iokit_swift_wrap_service(service: u32) -> *mut c_void;
+    pub fn iokit_swift_service_raw(service: *mut c_void) -> u32;
     pub fn iokit_swift_service_retain(service: *mut c_void) -> *mut c_void;
     pub fn iokit_swift_service_release(service: *mut c_void);
     pub fn iokit_swift_service_class_name(service: *mut c_void) -> *mut c_char;
@@ -31,6 +33,7 @@ unsafe extern "C" {
     ) -> i32;
     pub fn iokit_swift_service_as_registry_entry(service: *mut c_void) -> *mut c_void;
 
+    pub fn iokit_swift_wrap_registry_entry(entry: u32) -> *mut c_void;
     pub fn iokit_swift_registry_entry_from_path(path: *const c_char) -> *mut c_void;
     pub fn iokit_swift_registry_entry_retain(entry: *mut c_void) -> *mut c_void;
     pub fn iokit_swift_registry_entry_release(entry: *mut c_void);
@@ -80,9 +83,12 @@ unsafe extern "C" {
     ) -> *mut c_void;
     pub fn iokit_swift_registry_entry_in_plane(entry: *mut c_void, plane: *const c_char) -> bool;
 
+    pub fn iokit_swift_wrap_iterator(iterator: u32) -> *mut c_void;
     pub fn iokit_swift_iterator_retain(iterator: *mut c_void) -> *mut c_void;
     pub fn iokit_swift_iterator_release(iterator: *mut c_void);
     pub fn iokit_swift_iterator_is_valid(iterator: *mut c_void) -> bool;
+    pub fn iokit_swift_iterator_enter_entry(iterator: *mut c_void) -> i32;
+    pub fn iokit_swift_iterator_exit_entry(iterator: *mut c_void) -> i32;
     pub fn iokit_swift_iterator_reset(iterator: *mut c_void);
     pub fn iokit_swift_iterator_next_service(iterator: *mut c_void) -> *mut c_void;
     pub fn iokit_swift_iterator_next_registry_entry(iterator: *mut c_void) -> *mut c_void;

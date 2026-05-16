@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [IOKit](https://developer.apple.com/documentation/iokit) user-space APIs on macOS via a Swift bridge.
 
-> **Status:** v0.2.0 expands the crate into audited modules for `IOService`, `IOConnect`, `IORegistry`, `IONotificationPort`, `IOIterator`, `IOPMLib`, `IOPS`, and `IOMessage`. `IOHIBackingStore` is intentionally represented as unavailable because it is private SDK surface and is not present in the public macOS headers.
+> **Status:** v0.2.1 adds audited `IOKitLib`/`IOKitServer` helpers for main-port lookup, global busy/quiet queries, root-registry traversal, BSD-name matching, and `IOCatalogue*`, plus `IOHIDManager` / `IOHIDDevice` wrappers and expanded `IOPMLib` load-advisory coverage. `IOCFPlugIn`, `IOCFSerialize` / `IOCFUnserialize`, `IODataQueue`, and `IOUserServer` are now available through `raw-ffi`. `IOHIBackingStore` remains intentionally unavailable because it is private SDK surface and is not present in the public macOS headers.
 
 ## Quick start
 
@@ -25,12 +25,15 @@ fn main() -> Result<()> {
 
 ## Module map
 
+- `io_kit` — main-port lookup, global busy/quiet queries, root-registry iteration, BSD-name matching, receive-port creation, and `IOCatalogue*` helpers.
 - `io_service` — service matching, class/bundle metadata, registry-style helpers, and `IOServiceOpen`.
 - `io_connect` — user-client connection handles plus scalar/struct method calls.
 - `io_registry` — registry path lookup, names, paths, properties, and traversal.
 - `io_notification_port` — notification port lifecycle plus Mach-port/run-loop access.
-- `io_iterator` — iterator reset/validation and typed service/registry iteration.
-- `io_pm` — `IOPMLib` snapshots, aggressiveness, thermal warning lookup, and power assertions.
+- `io_iterator` — iterator reset/validation, registry enter/exit, and typed service/registry iteration.
+- `io_hid` — `IOHIDManager` / `IOHIDDevice` wrappers for enumeration, properties, reports, and low-level callback registration.
+- `io_pm` — `IOPMLib` snapshots, aggressiveness, thermal warning lookup, load advisory, and power assertions.
+- `io_cf` — `IOCFSerialize` / `IOCFUnserialize` helpers for CoreFoundation snapshots.
 - `iops` — power-source snapshots, provider type, battery warning, and time remaining.
 - `io_message` — typed wrappers for the public `IOMessage.h` constants.
 - `io_hi_backing_store` — compatibility stub documenting public-SDK unavailability.
@@ -48,6 +51,8 @@ cargo run --example 07_iopm
 cargo run --example 08_iops
 cargo run --example 09_io_message
 cargo run --example 10_iohi_backing_store
+cargo run --example 11_io_kit
+cargo run --example 12_io_hid
 ```
 
 ## Raw FFI

@@ -4,7 +4,8 @@
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
-    missing_docs
+    missing_docs,
+    clippy::missing_safety_doc
 )]
 
 use core::ffi::{c_char, c_void};
@@ -16,16 +17,22 @@ pub type CFNumberRef = *const c_void;
 pub type CFBooleanRef = *const c_void;
 pub type CFDataRef = *const c_void;
 pub type CFArrayRef = *const c_void;
+pub type CFSetRef = *const c_void;
 pub type CFDictionaryRef = *const c_void;
 pub type CFMutableDictionaryRef = *mut c_void;
+pub type CFRunLoopRef = *const c_void;
 pub type CFRunLoopSourceRef = *const c_void;
+pub type CFUUIDRef = *const c_void;
 pub type CFDateRef = *const c_void;
 pub type CFIndex = isize;
 pub type CFTypeID = usize;
+pub type CFOptionFlags = usize;
 pub type CFTimeInterval = f64;
 pub type kern_return_t = i32;
 pub type IOReturn = i32;
 pub type IOOptionBits = u32;
+pub type IOHIDReportType = u32;
+pub type IOSystemLoadAdvisoryLevel = i32;
 pub type mach_port_t = u32;
 pub type task_port_t = mach_port_t;
 pub type boolean_t = u32;
@@ -37,11 +44,18 @@ pub type io_connect_t = u32;
 pub type IOPMAssertionID = u32;
 pub type IOPMAssertionLevel = u32;
 pub type IONotificationPortRef = *mut c_void;
+pub type IOHIDManagerRef = *const c_void;
+pub type IOHIDDeviceRef = *const c_void;
+pub type IOHIDElementRef = *const c_void;
+pub type IOHIDValueRef = *const c_void;
 pub type dispatch_queue_t = *mut c_void;
+pub type dispatch_block_t = *mut c_void;
+pub type SInt32 = i32;
 pub type vm_address_t = usize;
 pub type vm_size_t = usize;
 pub type mach_vm_address_t = u64;
 pub type mach_vm_size_t = u64;
+pub type mach_msg_header_t = c_void;
 pub type io_struct_inband_t = *mut c_char;
 
 #[repr(C)]
@@ -49,6 +63,28 @@ pub type io_struct_inband_t = *mut c_char;
 pub struct mach_timespec_t {
     pub tv_sec: u32,
     pub tv_nsec: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct IODataQueueEntry {
+    pub size: u32,
+    pub data: [u8; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct IODataQueueMemory {
+    pub queue_size: u32,
+    pub head: u32,
+    pub tail: u32,
+    pub queue: [IODataQueueEntry; 1],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct IOCFPlugInInterface {
+    _private: [u8; 0],
 }
 
 pub type IOServiceMatchingCallback =
@@ -59,6 +95,60 @@ pub type IOServiceInterestCallback = unsafe extern "C" fn(
     message_type: u32,
     message_argument: *mut c_void,
 );
+pub type IOAsyncCallback0 = unsafe extern "C" fn(refcon: *mut c_void, result: IOReturn);
+pub type IOAsyncCallback1 =
+    unsafe extern "C" fn(refcon: *mut c_void, result: IOReturn, arg0: *mut c_void);
+pub type IOAsyncCallback2 = unsafe extern "C" fn(
+    refcon: *mut c_void,
+    result: IOReturn,
+    arg0: *mut c_void,
+    arg1: *mut c_void,
+);
+pub type IOAsyncCallback = unsafe extern "C" fn(
+    refcon: *mut c_void,
+    result: IOReturn,
+    args: *mut *mut c_void,
+    num_args: u32,
+);
+pub type IOHIDCallback =
+    unsafe extern "C" fn(context: *mut c_void, result: IOReturn, sender: *mut c_void);
+pub type IOHIDReportCallback = unsafe extern "C" fn(
+    context: *mut c_void,
+    result: IOReturn,
+    sender: *mut c_void,
+    ty: IOHIDReportType,
+    report_id: u32,
+    report: *mut u8,
+    report_length: CFIndex,
+);
+pub type IOHIDReportWithTimeStampCallback = unsafe extern "C" fn(
+    context: *mut c_void,
+    result: IOReturn,
+    sender: *mut c_void,
+    ty: IOHIDReportType,
+    report_id: u32,
+    report: *mut u8,
+    report_length: CFIndex,
+    timestamp: u64,
+);
+pub type IOHIDValueCallback = unsafe extern "C" fn(
+    context: *mut c_void,
+    result: IOReturn,
+    sender: *mut c_void,
+    value: IOHIDValueRef,
+);
+pub type IOHIDValueMultipleCallback = unsafe extern "C" fn(
+    context: *mut c_void,
+    result: IOReturn,
+    sender: *mut c_void,
+    multiple: CFDictionaryRef,
+);
+pub type IOHIDDeviceCallback = unsafe extern "C" fn(
+    context: *mut c_void,
+    result: IOReturn,
+    sender: *mut c_void,
+    device: IOHIDDeviceRef,
+);
 pub type IOPowerSourceCallbackType = unsafe extern "C" fn(context: *mut c_void);
 
 pub const kIOReturnSuccess: IOReturn = 0;
@@ -68,6 +158,35 @@ pub const IO_NAME_SIZE: usize = 128;
 pub const kIORegistryIterateRecursively: u32 = 0x0000_0001;
 pub const kIORegistryIterateParents: u32 = 0x0000_0002;
 pub const kIOServiceInteractionAllowed: u32 = 0x0000_0001;
+pub const kIOMainPortDefault: mach_port_t = 0;
+pub const kIOCFSerializeToBinary: usize = 0x0000_0001;
+pub const kIOCatalogAddDrivers: u32 = 1;
+pub const kIOCatalogAddDriversNoMatch: u32 = 2;
+pub const kIOCatalogRemoveDrivers: u32 = 3;
+pub const kIOCatalogRemoveDriversNoMatch: u32 = 4;
+pub const kIOCatalogKextdActive: u32 = 7;
+pub const kIOCatalogKextdFinishedLaunching: u32 = 8;
+pub const kIOCatalogResetDrivers: u32 = 9;
+pub const kIOCatalogResetDriversNoMatch: u32 = 10;
+pub const kIOCatalogGetContents: u32 = 1;
+pub const kIOCatalogGetModuleDemandList: u32 = 2;
+pub const kIOCatalogGetCacheMissList: u32 = 3;
+pub const kIOCatalogGetROMMkextList: u32 = 4;
+pub const kIOCatalogResetDefault: u32 = 1;
+pub const kIOCatalogModuleUnload: u32 = 1;
+pub const kIOCatalogModuleTerminate: u32 = 2;
+pub const kIOCatalogServiceTerminate: u32 = 3;
+pub const kIOHIDManagerOptionNone: u32 = 0x0;
+pub const kIOHIDManagerOptionUsePersistentProperties: u32 = 0x1;
+pub const kIOHIDManagerOptionDoNotLoadProperties: u32 = 0x2;
+pub const kIOHIDManagerOptionDoNotSaveProperties: u32 = 0x4;
+pub const kIOHIDManagerOptionIndependentDevices: u32 = 0x8;
+pub const kIOHIDReportTypeInput: IOHIDReportType = 0;
+pub const kIOHIDReportTypeOutput: IOHIDReportType = 1;
+pub const kIOHIDReportTypeFeature: IOHIDReportType = 2;
+pub const kIOHIDReportTypeCount: IOHIDReportType = 3;
+pub const kIOHIDDeviceGetValueWithUpdate: u32 = 0x0002_0000;
+pub const kIOHIDDeviceGetValueWithoutUpdate: u32 = 0x0004_0000;
 
 pub const K_IO_SERVICE_PLANE: &str = "IOService";
 pub const K_IOPublishNotification: &str = "IOServicePublish";
@@ -131,6 +250,32 @@ pub const kIOPMUserActiveRemote: u32 = 1;
 pub const kIOPMThermalWarningLevelNormal: u32 = 0;
 pub const kIOPMThermalWarningLevelDanger: u32 = 100;
 pub const kIOPMThermalWarningLevelCrisis: u32 = 10;
+pub const K_IOPMAssertionTimeoutKey: &str = "TimeoutSeconds";
+pub const K_IOPMAssertionTimeoutActionKey: &str = "TimeoutAction";
+pub const K_IOPMAssertionTimeoutActionLog: &str = "TimeoutActionLog";
+pub const K_IOPMAssertionTimeoutActionTurnOff: &str = "TimeoutActionTurnOff";
+pub const K_IOPMAssertionTimeoutActionRelease: &str = "TimeoutActionRelease";
+pub const K_IOPMAssertionRetainCountKey: &str = "RetainCount";
+pub const K_IOPMAssertionNameKey: &str = "AssertName";
+pub const K_IOPMAssertionDetailsKey: &str = "Details";
+pub const K_IOPMAssertionHumanReadableReasonKey: &str = "HumanReadableReason";
+pub const K_IOPMAssertionLocalizationBundlePathKey: &str = "BundlePath";
+pub const K_IOPMAssertionFrameworkIDKey: &str = "FrameworkBundleID";
+pub const K_IOPMAssertionPlugInIDKey: &str = "PlugInBundleID";
+pub const K_IOPMAssertionTypeKey: &str = "AssertType";
+pub const K_IOPMAssertionLevelKey: &str = "AssertLevel";
+pub const K_IOSystemLoadAdvisoryNotifyName: &str =
+    "com.apple.system.powermanagement.SystemLoadAdvisory";
+pub const kIOSystemLoadAdvisoryLevelBad: IOSystemLoadAdvisoryLevel = 1;
+pub const kIOSystemLoadAdvisoryLevelOK: IOSystemLoadAdvisoryLevel = 2;
+pub const kIOSystemLoadAdvisoryLevelGreat: IOSystemLoadAdvisoryLevel = 3;
+pub const K_IOSystemLoadAdvisoryUserLevelKey: &str = "UserLevel";
+pub const K_IOSystemLoadAdvisoryBatteryLevelKey: &str = "BatteryLevel";
+pub const K_IOSystemLoadAdvisoryThermalLevelKey: &str = "ThermalLevel";
+pub const K_IOSystemLoadAdvisoryCombinedLevelKey: &str = "CombinedLevel";
+pub const K_IOPMCPUPowerNotificationKey: &str = "com.apple.system.power.CPU";
+pub const K_IOPMThermalWarningNotificationKey: &str =
+    "com.apple.system.power.thermal_warning";
 
 pub const K_IOPSNotifyLowBattery: &str = "com.apple.system.powersources.lowbattery";
 pub const K_IOPSNotifyTimeRemaining: &str = "com.apple.system.powersources.timeremaining";
@@ -147,6 +292,35 @@ pub const kIOPSTimeRemainingUnlimited: f64 = -2.0;
 pub const kIOPSLowBatteryWarningNone: u32 = 1;
 pub const kIOPSLowBatteryWarningEarly: u32 = 2;
 pub const kIOPSLowBatteryWarningFinal: u32 = 3;
+pub const K_IOUserServerClassKey: &str = "IOUserServer";
+pub const K_IOUserServerNameKey: &str = "IOUserServerName";
+pub const K_IOUserServerTagKey: &str = "IOUserServerTag";
+pub const K_IOUserServerCDHashKey: &str = "IOUserServerCDHash";
+
+#[must_use]
+pub unsafe fn kIOCFPlugInInterfaceID() -> CFUUIDRef {
+    unsafe {
+        CFUUIDGetConstantUUIDWithBytes(
+            core::ptr::null(),
+            0xC2,
+            0x44,
+            0xE8,
+            0x58,
+            0x10,
+            0x9C,
+            0x11,
+            0xD4,
+            0x91,
+            0xD4,
+            0x00,
+            0x50,
+            0xE4,
+            0xC6,
+            0x42,
+            0x6F,
+        )
+    }
+}
 
 unsafe extern "C" {
     pub static kCFAllocatorDefault: CFAllocatorRef;
@@ -183,6 +357,9 @@ unsafe extern "C" {
     pub fn CFArrayGetCount(array: CFArrayRef) -> CFIndex;
     pub fn CFArrayGetValueAtIndex(array: CFArrayRef, index: CFIndex) -> *const c_void;
 
+    pub fn CFSetGetCount(set: CFSetRef) -> CFIndex;
+    pub fn CFSetGetValues(set: CFSetRef, values: *mut *const c_void);
+
     pub fn CFDictionaryGetTypeID() -> CFTypeID;
     pub fn CFDictionaryGetCount(dictionary: CFDictionaryRef) -> CFIndex;
     pub fn CFDictionaryGetKeysAndValues(
@@ -190,6 +367,26 @@ unsafe extern "C" {
         keys: *mut *const c_void,
         values: *mut *const c_void,
     );
+
+    pub fn CFUUIDGetConstantUUIDWithBytes(
+        alloc: CFAllocatorRef,
+        byte0: u8,
+        byte1: u8,
+        byte2: u8,
+        byte3: u8,
+        byte4: u8,
+        byte5: u8,
+        byte6: u8,
+        byte7: u8,
+        byte8: u8,
+        byte9: u8,
+        byte10: u8,
+        byte11: u8,
+        byte12: u8,
+        byte13: u8,
+        byte14: u8,
+        byte15: u8,
+    ) -> CFUUIDRef;
 
     pub fn IOObjectRelease(object: io_object_t) -> kern_return_t;
     pub fn IOObjectRetain(object: io_object_t) -> kern_return_t;
@@ -207,8 +404,21 @@ unsafe extern "C" {
     pub fn IOIteratorReset(iterator: io_iterator_t);
     pub fn IOIteratorIsValid(iterator: io_iterator_t) -> boolean_t;
 
+    pub fn IOMainPort(bootstrap_port: mach_port_t, main_port: *mut mach_port_t) -> kern_return_t;
+    pub fn IODispatchCalloutFromMessage(
+        unused: *mut c_void,
+        msg: *mut mach_msg_header_t,
+        reference: *mut c_void,
+    );
+    pub fn IOCreateReceivePort(msg_type: u32, recv_port: *mut mach_port_t) -> kern_return_t;
+
     pub fn IOServiceMatching(name: *const c_char) -> CFMutableDictionaryRef;
     pub fn IOServiceNameMatching(name: *const c_char) -> CFMutableDictionaryRef;
+    pub fn IOBSDNameMatching(
+        main_port: mach_port_t,
+        options: u32,
+        bsd_name: *const c_char,
+    ) -> CFMutableDictionaryRef;
     pub fn IORegistryEntryIDMatching(entry_id: u64) -> CFMutableDictionaryRef;
     pub fn IOServiceGetMatchingService(
         main_port: mach_port_t,
@@ -253,6 +463,11 @@ unsafe extern "C" {
         service: io_service_t,
         wait_time: *mut mach_timespec_t,
     ) -> kern_return_t;
+    pub fn IOKitGetBusyState(main_port: mach_port_t, busy_state: *mut u32) -> kern_return_t;
+    pub fn IOKitWaitQuiet(
+        main_port: mach_port_t,
+        wait_time: *mut mach_timespec_t,
+    ) -> kern_return_t;
     pub fn IOServiceOpen(
         service: io_service_t,
         owning_task: task_port_t,
@@ -268,6 +483,25 @@ unsafe extern "C" {
         open_firmware_path: *const c_char,
         bsd_name: *mut c_char,
     ) -> kern_return_t;
+    pub fn IOCatalogueSendData(
+        main_port: mach_port_t,
+        flag: u32,
+        buffer: *const c_char,
+        size: u32,
+    ) -> kern_return_t;
+    pub fn IOCatalogueTerminate(
+        main_port: mach_port_t,
+        flag: u32,
+        description: *mut c_char,
+    ) -> kern_return_t;
+    pub fn IOCatalogueGetData(
+        main_port: mach_port_t,
+        flag: u32,
+        buffer: *mut *mut c_char,
+        size: *mut u32,
+    ) -> kern_return_t;
+    pub fn IOCatalogueModuleLoaded(main_port: mach_port_t, name: *mut c_char) -> kern_return_t;
+    pub fn IOCatalogueReset(main_port: mach_port_t, flag: u32) -> kern_return_t;
 
     pub fn IONotificationPortCreate(main_port: mach_port_t) -> IONotificationPortRef;
     pub fn IONotificationPortDestroy(notify: IONotificationPortRef);
@@ -279,6 +513,15 @@ unsafe extern "C" {
         queue: dispatch_queue_t,
     );
 
+    pub fn IORegistryGetRootEntry(main_port: mach_port_t) -> io_registry_entry_t;
+    pub fn IORegistryCreateIterator(
+        main_port: mach_port_t,
+        plane: *const c_char,
+        options: IOOptionBits,
+        iterator: *mut io_iterator_t,
+    ) -> kern_return_t;
+    pub fn IORegistryIteratorEnterEntry(iterator: io_iterator_t) -> kern_return_t;
+    pub fn IORegistryIteratorExitEntry(iterator: io_iterator_t) -> kern_return_t;
     pub fn IORegistryEntryFromPath(
         main_port: mach_port_t,
         path: *const c_char,
@@ -635,6 +878,8 @@ unsafe extern "C" {
         assertion_id: *mut IOPMAssertionID,
     ) -> IOReturn;
     pub fn IOPMGetThermalWarningLevel(thermal_level: *mut u32) -> IOReturn;
+    pub fn IOGetSystemLoadAdvisory() -> IOSystemLoadAdvisoryLevel;
+    pub fn IOCopySystemLoadAdvisoryDetailed() -> CFDictionaryRef;
 
     pub fn IOPSGetBatteryWarningLevel() -> u32;
     pub fn IOPSGetTimeRemainingEstimate() -> CFTimeInterval;
@@ -651,4 +896,278 @@ unsafe extern "C" {
         context: *mut c_void,
     ) -> CFRunLoopSourceRef;
     pub fn IOPSCopyExternalPowerAdapterDetails() -> CFDictionaryRef;
+
+    pub fn IOCreatePlugInInterfaceForService(
+        service: io_service_t,
+        plugin_type: CFUUIDRef,
+        interface_type: CFUUIDRef,
+        interface: *mut *mut *mut IOCFPlugInInterface,
+        score: *mut SInt32,
+    ) -> kern_return_t;
+    pub fn IODestroyPlugInInterface(interface: *mut *mut IOCFPlugInInterface) -> kern_return_t;
+    pub fn IOCFSerialize(object: CFTypeRef, options: CFOptionFlags) -> CFDataRef;
+    pub fn IOCFUnserialize(
+        buffer: *const c_char,
+        allocator: CFAllocatorRef,
+        options: CFOptionFlags,
+        error_string: *mut CFStringRef,
+    ) -> CFTypeRef;
+    pub fn IOCFUnserializeBinary(
+        buffer: *const c_char,
+        buffer_size: usize,
+        allocator: CFAllocatorRef,
+        options: CFOptionFlags,
+        error_string: *mut CFStringRef,
+    ) -> CFTypeRef;
+    pub fn IOCFUnserializeWithSize(
+        buffer: *const c_char,
+        buffer_size: usize,
+        allocator: CFAllocatorRef,
+        options: CFOptionFlags,
+        error_string: *mut CFStringRef,
+    ) -> CFTypeRef;
+
+    pub fn IODataQueueDataAvailable(data_queue: *mut IODataQueueMemory) -> u8;
+    pub fn IODataQueuePeek(data_queue: *mut IODataQueueMemory) -> *mut IODataQueueEntry;
+    pub fn IODataQueueDequeue(
+        data_queue: *mut IODataQueueMemory,
+        data: *mut c_void,
+        data_size: *mut u32,
+    ) -> IOReturn;
+    pub fn IODataQueueWaitForAvailableData(
+        data_queue: *mut IODataQueueMemory,
+        notification_port: mach_port_t,
+    ) -> IOReturn;
+    pub fn IODataQueueAllocateNotificationPort() -> mach_port_t;
+    pub fn IODataQueueEnqueue(
+        data_queue: *mut IODataQueueMemory,
+        data: *mut c_void,
+        data_size: u32,
+    ) -> IOReturn;
+    pub fn IODataQueueSetNotificationPort(
+        data_queue: *mut IODataQueueMemory,
+        notify_port: mach_port_t,
+    ) -> IOReturn;
+
+    pub fn IOHIDManagerGetTypeID() -> CFTypeID;
+    pub fn IOHIDManagerCreate(allocator: CFAllocatorRef, options: IOOptionBits) -> IOHIDManagerRef;
+    pub fn IOHIDManagerOpen(manager: IOHIDManagerRef, options: IOOptionBits) -> IOReturn;
+    pub fn IOHIDManagerClose(manager: IOHIDManagerRef, options: IOOptionBits) -> IOReturn;
+    pub fn IOHIDManagerGetProperty(manager: IOHIDManagerRef, key: CFStringRef) -> CFTypeRef;
+    pub fn IOHIDManagerSetProperty(
+        manager: IOHIDManagerRef,
+        key: CFStringRef,
+        value: CFTypeRef,
+    ) -> u8;
+    pub fn IOHIDManagerScheduleWithRunLoop(
+        manager: IOHIDManagerRef,
+        run_loop: CFRunLoopRef,
+        run_loop_mode: CFStringRef,
+    );
+    pub fn IOHIDManagerUnscheduleFromRunLoop(
+        manager: IOHIDManagerRef,
+        run_loop: CFRunLoopRef,
+        run_loop_mode: CFStringRef,
+    );
+    pub fn IOHIDManagerSetDispatchQueue(manager: IOHIDManagerRef, queue: dispatch_queue_t);
+    pub fn IOHIDManagerSetCancelHandler(manager: IOHIDManagerRef, handler: dispatch_block_t);
+    pub fn IOHIDManagerActivate(manager: IOHIDManagerRef);
+    pub fn IOHIDManagerCancel(manager: IOHIDManagerRef);
+    pub fn IOHIDManagerSetDeviceMatching(
+        manager: IOHIDManagerRef,
+        matching: CFDictionaryRef,
+    );
+    pub fn IOHIDManagerSetDeviceMatchingMultiple(
+        manager: IOHIDManagerRef,
+        multiple: CFArrayRef,
+    );
+    pub fn IOHIDManagerCopyDevices(manager: IOHIDManagerRef) -> CFSetRef;
+    pub fn IOHIDManagerRegisterDeviceMatchingCallback(
+        manager: IOHIDManagerRef,
+        callback: Option<IOHIDDeviceCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDManagerRegisterDeviceRemovalCallback(
+        manager: IOHIDManagerRef,
+        callback: Option<IOHIDDeviceCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDManagerRegisterInputReportCallback(
+        manager: IOHIDManagerRef,
+        callback: Option<IOHIDReportCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDManagerRegisterInputReportWithTimeStampCallback(
+        manager: IOHIDManagerRef,
+        callback: Option<IOHIDReportWithTimeStampCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDManagerRegisterInputValueCallback(
+        manager: IOHIDManagerRef,
+        callback: Option<IOHIDValueCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDManagerSetInputValueMatching(
+        manager: IOHIDManagerRef,
+        matching: CFDictionaryRef,
+    );
+    pub fn IOHIDManagerSetInputValueMatchingMultiple(
+        manager: IOHIDManagerRef,
+        multiple: CFArrayRef,
+    );
+    pub fn IOHIDManagerSaveToPropertyDomain(
+        manager: IOHIDManagerRef,
+        application_id: CFStringRef,
+        user_name: CFStringRef,
+        host_name: CFStringRef,
+        options: IOOptionBits,
+    );
+
+    pub fn IOHIDDeviceGetTypeID() -> CFTypeID;
+    pub fn IOHIDDeviceCreate(allocator: CFAllocatorRef, service: io_service_t) -> IOHIDDeviceRef;
+    pub fn IOHIDDeviceGetService(device: IOHIDDeviceRef) -> io_service_t;
+    pub fn IOHIDDeviceOpen(device: IOHIDDeviceRef, options: IOOptionBits) -> IOReturn;
+    pub fn IOHIDDeviceClose(device: IOHIDDeviceRef, options: IOOptionBits) -> IOReturn;
+    pub fn IOHIDDeviceConformsTo(
+        device: IOHIDDeviceRef,
+        usage_page: u32,
+        usage: u32,
+    ) -> u8;
+    pub fn IOHIDDeviceGetProperty(device: IOHIDDeviceRef, key: CFStringRef) -> CFTypeRef;
+    pub fn IOHIDDeviceSetProperty(
+        device: IOHIDDeviceRef,
+        key: CFStringRef,
+        property: CFTypeRef,
+    ) -> u8;
+    pub fn IOHIDDeviceCopyMatchingElements(
+        device: IOHIDDeviceRef,
+        matching: CFDictionaryRef,
+        options: IOOptionBits,
+    ) -> CFArrayRef;
+    pub fn IOHIDDeviceScheduleWithRunLoop(
+        device: IOHIDDeviceRef,
+        run_loop: CFRunLoopRef,
+        run_loop_mode: CFStringRef,
+    );
+    pub fn IOHIDDeviceUnscheduleFromRunLoop(
+        device: IOHIDDeviceRef,
+        run_loop: CFRunLoopRef,
+        run_loop_mode: CFStringRef,
+    );
+    pub fn IOHIDDeviceSetDispatchQueue(device: IOHIDDeviceRef, queue: dispatch_queue_t);
+    pub fn IOHIDDeviceSetCancelHandler(device: IOHIDDeviceRef, handler: dispatch_block_t);
+    pub fn IOHIDDeviceActivate(device: IOHIDDeviceRef);
+    pub fn IOHIDDeviceCancel(device: IOHIDDeviceRef);
+    pub fn IOHIDDeviceRegisterRemovalCallback(
+        device: IOHIDDeviceRef,
+        callback: Option<IOHIDCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDDeviceRegisterInputValueCallback(
+        device: IOHIDDeviceRef,
+        callback: Option<IOHIDValueCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDDeviceRegisterInputReportCallback(
+        device: IOHIDDeviceRef,
+        report: *mut u8,
+        report_length: CFIndex,
+        callback: Option<IOHIDReportCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDDeviceRegisterInputReportWithTimeStampCallback(
+        device: IOHIDDeviceRef,
+        report: *mut u8,
+        report_length: CFIndex,
+        callback: Option<IOHIDReportWithTimeStampCallback>,
+        context: *mut c_void,
+    );
+    pub fn IOHIDDeviceSetInputValueMatching(
+        device: IOHIDDeviceRef,
+        matching: CFDictionaryRef,
+    );
+    pub fn IOHIDDeviceSetInputValueMatchingMultiple(
+        device: IOHIDDeviceRef,
+        multiple: CFArrayRef,
+    );
+    pub fn IOHIDDeviceSetValue(
+        device: IOHIDDeviceRef,
+        element: IOHIDElementRef,
+        value: IOHIDValueRef,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceSetValueMultiple(
+        device: IOHIDDeviceRef,
+        multiple: CFDictionaryRef,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceSetValueWithCallback(
+        device: IOHIDDeviceRef,
+        element: IOHIDElementRef,
+        value: IOHIDValueRef,
+        timeout: CFTimeInterval,
+        callback: Option<IOHIDValueCallback>,
+        context: *mut c_void,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceSetValueMultipleWithCallback(
+        device: IOHIDDeviceRef,
+        multiple: CFDictionaryRef,
+        timeout: CFTimeInterval,
+        callback: Option<IOHIDValueMultipleCallback>,
+        context: *mut c_void,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceGetValue(
+        device: IOHIDDeviceRef,
+        element: IOHIDElementRef,
+        value: *mut IOHIDValueRef,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceGetValueWithOptions(
+        device: IOHIDDeviceRef,
+        element: IOHIDElementRef,
+        value: *mut IOHIDValueRef,
+        options: u32,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceCopyValueMultiple(
+        device: IOHIDDeviceRef,
+        elements: CFArrayRef,
+        multiple: *mut CFDictionaryRef,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceGetValueWithCallback(
+        device: IOHIDDeviceRef,
+        element: IOHIDElementRef,
+        value: *mut IOHIDValueRef,
+        timeout: CFTimeInterval,
+        callback: Option<IOHIDValueCallback>,
+        context: *mut c_void,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceCopyValueMultipleWithCallback(
+        device: IOHIDDeviceRef,
+        elements: CFArrayRef,
+        multiple: *mut CFDictionaryRef,
+        timeout: CFTimeInterval,
+        callback: Option<IOHIDValueMultipleCallback>,
+        context: *mut c_void,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceSetReport(
+        device: IOHIDDeviceRef,
+        report_type: IOHIDReportType,
+        report_id: CFIndex,
+        report: *const u8,
+        report_length: CFIndex,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceSetReportWithCallback(
+        device: IOHIDDeviceRef,
+        report_type: IOHIDReportType,
+        report_id: CFIndex,
+        report: *const u8,
+        report_length: CFIndex,
+        timeout: CFTimeInterval,
+        callback: Option<IOHIDReportCallback>,
+        context: *mut c_void,
+    ) -> IOReturn;
+    pub fn IOHIDDeviceGetReport(
+        device: IOHIDDeviceRef,
+        report_type: IOHIDReportType,
+        report_id: CFIndex,
+        report: *mut u8,
+        report_length: *mut CFIndex,
+    ) -> IOReturn;
 }

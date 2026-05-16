@@ -19,5 +19,16 @@ fn reads_power_management_snapshots() -> iokit::Result<()> {
         Err(error) => assert!(error.to_string().contains("IOPMGetThermalWarningLevel")),
     }
 
+    assert!(matches!(
+        system_load_advisory(),
+        SystemLoadAdvisoryLevel::Bad
+            | SystemLoadAdvisoryLevel::Ok
+            | SystemLoadAdvisoryLevel::Great
+            | SystemLoadAdvisoryLevel::Unknown(_)
+    ));
+    if let Some(details) = copy_system_load_advisory_detailed() {
+        assert_eq!(details.kind_name(), "Dictionary");
+    }
+
     Ok(())
 }

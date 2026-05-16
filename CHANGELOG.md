@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Added core `IOKitLib` helpers for `IOMainPort`, global busy/quiet queries, root-registry iteration, BSD-name matching, and `IOCatalogue*` access.
+- Added `IOHIDManager` / `IOHIDDevice` wrappers plus new `io_kit` and `io_hid` examples and integration tests.
+- Added `IOPMLib` assertion-metadata constants and system-load advisory wrappers.
+- Added raw-ffi coverage for `IOCFPlugIn`, `IOCFSerialize` / `IOCFUnserialize`, `IODataQueue`, and `IOUserServer` gaps, and closed the remaining audit gaps for the sampled public SDK surface.
+
 ## 0.2.0
 
 - Added a Swift bridge package and area-based Rust modules for `IOService`, `IOConnect`, `IORegistry`, `IONotificationPort`, `IOIterator`, `IOPMLib`, `IOPS`, and `IOMessage`.
