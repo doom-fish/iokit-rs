@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.1
+
+- **Panic safety**: all four `extern "C"` stream callbacks
+  (`service_interest_cb`, `service_match_cb`, `power_source_cb`,
+  `system_power_cb`) now wrap their body in
+  `doom_fish_utils::panic_safe::catch_user_panic`, preventing undefined
+  behaviour if Rust panics across the FFI boundary.
+- **`SystemPowerStream` docs**: clarified that sleep/shutdown
+  acknowledgments are issued **synchronously inside the IOKit callback**,
+  before the event reaches Rust.  The stream is observation-only;
+  added guidance on using `PowerAssertion` to delay sleep instead.
+- **SAFETY comments**: added `// SAFETY:` annotations to every
+  `Box::from_raw` call in the four `*Handle::drop` implementations.
+- **`doom-fish-utils` version range**: widened from `"0.1"` (≡ `<0.2`)
+  to `">=0.1, <0.3"` to allow the next minor release.
+- **README doctest**: fixed `Some(())` → `Some(_)` in the async
+  `watch_battery` example (`PowerSourceEvent` is a unit struct, not `()`).
+
 ## 0.3.0
 
 - Added `async` feature gate with optional `doom-fish-utils` dependency.

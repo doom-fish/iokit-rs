@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [IOKit](https://developer.apple.com/documentation/iokit) user-space APIs on macOS via a Swift bridge.
 
-> **Status:** v0.3.0 adds a Tier-2 `async` feature with four `BoundedAsyncStream`-based event streams (`ServiceInterestStream`, `ServiceMatchStream`, `PowerSourceStream`, `SystemPowerStream`). v0.2.1 adds audited `IOKitLib`/`IOKitServer` helpers for main-port lookup, global busy/quiet queries, root-registry traversal, BSD-name matching, and `IOCatalogue*`, plus `IOHIDManager` / `IOHIDDevice` wrappers and expanded `IOPMLib` load-advisory coverage. `IOCFPlugIn`, `IOCFSerialize` / `IOCFUnserialize`, `IODataQueue`, and `IOUserServer` are now available through `raw-ffi`. `IOHIBackingStore` remains intentionally unavailable because it is private SDK surface and is not present in the public macOS headers.
+> **Status:** v0.3.1 adds panic-safe guards to all four async stream FFI callbacks, strengthens `SystemPowerStream` documentation to clarify its observation-only semantics, and fixes a broken `watch_battery` doctest. v0.3.0 adds a Tier-2 `async` feature with four `BoundedAsyncStream`-based event streams (`ServiceInterestStream`, `ServiceMatchStream`, `PowerSourceStream`, `SystemPowerStream`).
 
 ## Quick start
 
@@ -53,7 +53,7 @@ use iokit::async_api::PowerSourceStream;
 
 async fn watch_battery() {
     let stream = PowerSourceStream::subscribe(16).expect("subscribe");
-    while let Some(()) = stream.next().await {
+    while let Some(_) = stream.next().await {
         println!("power-source changed");
     }
 }

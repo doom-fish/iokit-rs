@@ -10,6 +10,16 @@
 //! | [`PowerSourceStream`] | `IOPSNotificationCreateRunLoopSource` | power-source changed |
 //! | [`SystemPowerStream`] | `IORegisterForSystemPower` | system sleep / wake / shutdown |
 //!
+//! # `SystemPowerStream` is observation-only
+//!
+//! The bridge auto-acknowledges sleep/shutdown messages (`CanSystemSleep`,
+//! `SystemWillSleep`, `SystemWillPowerOff`, `SystemWillRestart`)
+//! **synchronously inside the IOKit callback**, *before* the event is placed
+//! in the stream.  Rust code therefore cannot delay or deny a sleep transition
+//! via this stream.  Use [`crate::PowerAssertion`] to hold off sleep
+//! proactively, or call `IORegisterForSystemPower` directly if you need to
+//! deny `CanSystemSleep`.
+//!
 //! # Feature gate
 //!
 //! All types in this module are gated behind the **`async`** Cargo feature:
@@ -63,6 +73,7 @@
     clippy::ptr_cast_constness
 )]
 
+use doom_fish_utils::panic_safe::catch_user_panic;
 use doom_fish_utils::stream::{AsyncStreamSender, BoundedAsyncStream, NextItem};
 use std::ffi::c_void;
 
@@ -94,7 +105,9 @@ impl Drop for ServiceInterestHandle {
         unsafe {
             // 1. Stop callbacks and drain in-flight work.
             bridge::iokit_swift_service_interest_unsubscribe(self.bridge_ptr);
-            // 2. Free the sender; closing the stream for consumers.
+            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
+            // is dropped exactly once here, after unsubscribe() has guaranteed no
+            // further callbacks can reference it.
             drop(Box::from_raw(self.sender_ptr));
         }
     }
@@ -114,10 +127,15 @@ unsafe extern "C" fn service_interest_cb(
     payload: *const c_void,
     ctx: *mut c_void,
 ) {
+    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
+    // callback lifetime — unsubscribe() drains the dispatch queue before
+    // dropping the sender box.
     let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<ServiceInterestEvent>>()) };
-    sender.push(ServiceInterestEvent {
-        message: IoMessage::from_raw(kind as u32),
-        message_argument: payload as usize,
+    catch_user_panic("service_interest_cb", || {
+        sender.push(ServiceInterestEvent {
+            message: IoMessage::from_raw(kind as u32),
+            message_argument: payload as usize,
+        });
     });
 }
 
@@ -219,6 +237,9 @@ impl Drop for ServiceMatchHandle {
     fn drop(&mut self) {
         unsafe {
             bridge::iokit_swift_service_match_unsubscribe(self.bridge_ptr);
+            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
+            // is dropped exactly once here, after unsubscribe() has guaranteed no
+            // further callbacks can reference it.
             drop(Box::from_raw(self.sender_ptr));
         }
     }
@@ -241,6 +262,9 @@ unsafe extern "C" fn service_match_cb(
     payload: *const c_void,
     ctx: *mut c_void,
 ) {
+    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
+    // callback lifetime — unsubscribe() drains the dispatch queue before
+    // dropping the sender box.
     let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<ServiceMatchEvent>>()) };
     let service = if payload.is_null() {
         None
@@ -254,7 +278,9 @@ unsafe extern "C" fn service_match_cb(
     } else {
         ServiceMatchKind::Terminated
     };
-    sender.push(ServiceMatchEvent { kind: event_kind, service });
+    catch_user_panic("service_match_cb", || {
+        sender.push(ServiceMatchEvent { kind: event_kind, service });
+    });
 }
 
 impl ServiceMatchStream {
@@ -324,6 +350,9 @@ impl Drop for PowerSourceHandle {
     fn drop(&mut self) {
         unsafe {
             bridge::iokit_swift_power_source_unsubscribe(self.bridge_ptr);
+            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
+            // is dropped exactly once here, after unsubscribe() has guaranteed no
+            // further callbacks can reference it.
             drop(Box::from_raw(self.sender_ptr));
         }
     }
@@ -345,8 +374,13 @@ unsafe extern "C" fn power_source_cb(
     _payload: *const c_void,
     ctx: *mut c_void,
 ) {
+    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
+    // callback lifetime — unsubscribe() removes the run-loop source and drains
+    // the serial queue before dropping the sender box.
     let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<PowerSourceEvent>>()) };
-    sender.push(PowerSourceEvent);
+    catch_user_panic("power_source_cb", || {
+        sender.push(PowerSourceEvent);
+    });
 }
 
 impl PowerSourceStream {
@@ -398,9 +432,9 @@ impl PowerSourceStream {
 /// This is the same [`IoMessage`] type used by the rest of the crate
 /// (e.g. `IoMessage::SystemWillSleep`, `IoMessage::SystemHasPoweredOn`).
 ///
-/// The bridge auto-acknowledges `CanSystemSleep`, `SystemWillSleep`,
-/// `SystemWillPowerOff`, and `SystemWillRestart` so the system does not stall
-/// waiting for an explicit `IOAllowPowerChange` call.
+/// **Note:** the bridge auto-acknowledges `CanSystemSleep`, `SystemWillSleep`,
+/// `SystemWillPowerOff`, and `SystemWillRestart` synchronously *before*
+/// delivering the event.  See [`SystemPowerStream`] for implications.
 pub type SystemPowerEvent = IoMessage;
 
 struct SystemPowerHandle {
@@ -414,6 +448,9 @@ impl Drop for SystemPowerHandle {
     fn drop(&mut self) {
         unsafe {
             bridge::iokit_swift_system_power_unsubscribe(self.bridge_ptr);
+            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
+            // is dropped exactly once here, after unsubscribe() has guaranteed no
+            // further callbacks can reference it.
             drop(Box::from_raw(self.sender_ptr));
         }
     }
@@ -429,11 +466,24 @@ impl Drop for SystemPowerHandle {
 /// - `IoMessage::SystemWillPowerOff`
 /// - `IoMessage::CanSystemSleep`
 ///
-/// # Auto-acknowledgment
+/// # Auto-acknowledgment — observation only
 ///
-/// The bridge calls `IOAllowPowerChange` automatically for the messages that
-/// require it.  Consumers that want to *deny* a sleep request must use the
-/// lower-level IOKit API directly.
+/// The bridge calls `IOAllowPowerChange` **synchronously inside the IOKit
+/// callback**, *before* the event is dispatched to the stream.  This means:
+///
+/// - The system is never blocked waiting for an ack from Rust code.
+/// - Rust consumers **cannot delay or deny** a sleep/shutdown transition
+///   using this stream.  By the time `next().await` returns an event, the
+///   system has already been permitted to proceed.
+///
+/// If your application needs to delay sleep (e.g. to flush state before the
+/// system suspends), use `IOPMAssertionCreateWithName` / [`crate::PowerAssertion`]
+/// to hold a `PreventSystemSleep` assertion while the critical work is in
+/// progress, rather than trying to block the power transition here.
+///
+/// If you need to unconditionally *deny* `CanSystemSleep`, you must register
+/// with `IORegisterForSystemPower` directly and call `IOCancelPowerChange`
+/// before the kernel timeout (~30 s) expires.
 pub struct SystemPowerStream {
     inner: BoundedAsyncStream<SystemPowerEvent>,
     _handle: SystemPowerHandle,
@@ -444,8 +494,13 @@ unsafe extern "C" fn system_power_cb(
     _payload: *const c_void,
     ctx: *mut c_void,
 ) {
+    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
+    // callback lifetime — unsubscribe() removes the run-loop source and drains
+    // the serial queue before dropping the sender box.
     let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<SystemPowerEvent>>()) };
-    sender.push(IoMessage::from_raw(kind as u32));
+    catch_user_panic("system_power_cb", || {
+        sender.push(IoMessage::from_raw(kind as u32));
+    });
 }
 
 impl SystemPowerStream {
