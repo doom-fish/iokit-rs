@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [IOKit](https://developer.apple.com/documentation/iokit) user-space APIs on macOS via a Swift bridge.
 
-> **Status:** v0.2.1 adds audited `IOKitLib`/`IOKitServer` helpers for main-port lookup, global busy/quiet queries, root-registry traversal, BSD-name matching, and `IOCatalogue*`, plus `IOHIDManager` / `IOHIDDevice` wrappers and expanded `IOPMLib` load-advisory coverage. `IOCFPlugIn`, `IOCFSerialize` / `IOCFUnserialize`, `IODataQueue`, and `IOUserServer` are now available through `raw-ffi`. `IOHIBackingStore` remains intentionally unavailable because it is private SDK surface and is not present in the public macOS headers.
+> **Status:** v0.3.0 adds a Tier-2 `async` feature with four `BoundedAsyncStream`-based event streams (`ServiceInterestStream`, `ServiceMatchStream`, `PowerSourceStream`, `SystemPowerStream`). v0.2.1 adds audited `IOKitLib`/`IOKitServer` helpers for main-port lookup, global busy/quiet queries, root-registry traversal, BSD-name matching, and `IOCatalogue*`, plus `IOHIDManager` / `IOHIDDevice` wrappers and expanded `IOPMLib` load-advisory coverage. `IOCFPlugIn`, `IOCFSerialize` / `IOCFUnserialize`, `IODataQueue`, and `IOUserServer` are now available through `raw-ffi`. `IOHIBackingStore` remains intentionally unavailable because it is private SDK surface and is not present in the public macOS headers.
 
 ## Quick start
 
@@ -37,6 +37,31 @@ fn main() -> Result<()> {
 - `iops` — power-source snapshots, provider type, battery warning, and time remaining.
 - `io_message` — typed wrappers for the public `IOMessage.h` constants.
 - `io_hi_backing_store` — compatibility stub documenting public-SDK unavailability.
+- `async_api` *(requires `async` feature)* — `BoundedAsyncStream`-based event streams for service interest, service match, power-source change, and system power notifications.
+
+## Async streams
+
+Enable the `async` feature to get four ready-to-use event streams:
+
+```toml
+[dependencies]
+iokit = { version = "0.3", features = ["async"] }
+```
+
+```rust,no_run
+use iokit::async_api::PowerSourceStream;
+
+async fn watch_battery() {
+    let stream = PowerSourceStream::subscribe(16).expect("subscribe");
+    while let Some(()) = stream.next().await {
+        println!("power-source changed");
+    }
+}
+```
+
+All streams implement `Drop`-safe cancellation: dropping the stream (or its
+`SubscriptionHandle`) synchronously drains any in-flight callbacks before
+freeing internal resources.
 
 ## Examples
 
@@ -53,6 +78,7 @@ cargo run --example 09_io_message
 cargo run --example 10_iohi_backing_store
 cargo run --example 11_io_kit
 cargo run --example 12_io_hid
+cargo run --features async --example 13_async_stream
 ```
 
 ## Raw FFI

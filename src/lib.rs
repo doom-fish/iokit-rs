@@ -36,6 +36,10 @@ pub mod ffi {
     pub use crate::ffi_impl::*;
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub mod async_api;
+
 pub use cf::CFValue;
 pub use error::{IoKitError, Result};
 pub use io_cf::{serialize_raw, unserialize, unserialize_binary, unserialize_with_size, SERIALIZE_TO_BINARY};

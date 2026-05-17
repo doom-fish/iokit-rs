@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Added `async` feature gate with optional `doom-fish-utils` dependency.
+- Added `async_api` module with four `BoundedAsyncStream`-based event streams:
+  - `ServiceInterestStream` — wraps `IOServiceAddInterestNotification`.
+  - `ServiceMatchStream` — wraps `IOServiceAddMatchingNotification` (matched + terminated).
+  - `PowerSourceStream` — wraps `IOPSNotificationCreateRunLoopSource`.
+  - `SystemPowerStream` — wraps `IORegisterForSystemPower`; auto-acknowledges sleep/shutdown messages.
+- All four streams are `Drop`-safe: unsubscribing is synchronous and guaranteed to drain any in-flight callbacks before freeing the sender pointer.
+
 ## 0.2.1
 
 - Added core `IOKitLib` helpers for `IOMainPort`, global busy/quiet queries, root-registry iteration, BSD-name matching, and `IOCatalogue*` access.

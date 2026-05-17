@@ -188,4 +188,47 @@ unsafe extern "C" {
 
     pub fn iokit_swift_iohi_backing_store_public_sdk_available() -> bool;
     pub fn iokit_swift_iohi_backing_store_unavailability_reason() -> *mut c_char;
+
+    // --- Async stream bridges ---
+
+    /// Subscribe to service-interest notifications for `service`
+    /// (`IOServiceAddInterestNotification`).
+    /// Returns an opaque bridge handle on success, or null on failure.
+    /// The caller must eventually call `iokit_swift_service_interest_unsubscribe`.
+    pub fn iokit_swift_service_interest_subscribe(
+        service: *mut c_void,
+        interest_type: *const c_char,
+        on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
+        ctx: *mut c_void,
+    ) -> *mut c_void;
+    pub fn iokit_swift_service_interest_unsubscribe(handle: *mut c_void);
+
+    /// Subscribe to service-match/terminate notifications for `class_name`.
+    /// kind=0 → matched, kind=1 → terminated.  Payload is a retained
+    /// `IOObjectHolder`\* (opaque pointer wrapping an `io_service_t`).
+    pub fn iokit_swift_service_match_subscribe(
+        class_name: *const c_char,
+        on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
+        ctx: *mut c_void,
+    ) -> *mut c_void;
+    pub fn iokit_swift_service_match_unsubscribe(handle: *mut c_void);
+
+    /// Subscribe to power-source-changed notifications
+    /// (`IOPSNotificationCreateRunLoopSource`).
+    /// kind=0, payload=null; re-query IOPS for current state.
+    pub fn iokit_swift_power_source_subscribe(
+        on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
+        ctx: *mut c_void,
+    ) -> *mut c_void;
+    pub fn iokit_swift_power_source_unsubscribe(handle: *mut c_void);
+
+    /// Subscribe to system-power notifications (`IORegisterForSystemPower`).
+    /// kind = `IOMessage` messageType; bridge auto-acknowledges
+    /// `CanSystemSleep` / `SystemWillSleep` / `SystemWillPowerOff` /
+    /// `SystemWillRestart`.
+    pub fn iokit_swift_system_power_subscribe(
+        on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
+        ctx: *mut c_void,
+    ) -> *mut c_void;
+    pub fn iokit_swift_system_power_unsubscribe(handle: *mut c_void);
 }
