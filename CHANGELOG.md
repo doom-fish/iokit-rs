@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0] - 2026-05-18
+
+- Added `apple-cf` as a dependency and re-exported the raw `CF*Ref` aliases from
+  `apple_cf::raw` instead of maintaining local duplicates in `src/ffi/mod.rs`.
+- This is a breaking raw-FFI change: the public `ffi` module now exposes
+  `apple-cf`'s nominal Core Foundation pointer aliases.
+
 ## 0.3.1
 
 - **Panic safety**: all four `extern "C"` stream callbacks
