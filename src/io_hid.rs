@@ -93,7 +93,7 @@ impl HidManager {
         self.raw.as_ptr().cast_const()
     }
 
-    pub fn type_id() -> usize {
+    pub fn type_id() -> ffi_impl::CFTypeID {
         unsafe { ffi_impl::IOHIDManagerGetTypeID() }
     }
 
@@ -310,7 +310,7 @@ impl HidDevice {
         self.raw.as_ptr().cast_const()
     }
 
-    pub fn type_id() -> usize {
+    pub fn type_id() -> ffi_impl::CFTypeID {
         unsafe { ffi_impl::IOHIDDeviceGetTypeID() }
     }
 
@@ -438,7 +438,7 @@ impl HidDevice {
     pub unsafe fn register_input_report_callback(
         &self,
         report: *mut u8,
-        report_length: isize,
+        report_length: ffi_impl::CFIndex,
         callback: Option<ffi_impl::IOHIDReportCallback>,
         context: *mut c_void,
     ) {
@@ -456,7 +456,7 @@ impl HidDevice {
     pub unsafe fn register_input_report_with_timestamp_callback(
         &self,
         report: *mut u8,
-        report_length: isize,
+        report_length: ffi_impl::CFIndex,
         callback: Option<ffi_impl::IOHIDReportWithTimeStampCallback>,
         context: *mut c_void,
     ) {
@@ -629,7 +629,10 @@ impl HidDevice {
         report_id: isize,
         report: &[u8],
     ) -> Result<()> {
-        let report_length = isize::try_from(report.len()).map_err(|_| {
+        let report_id = ffi_impl::CFIndex::try_from(report_id).map_err(|_| {
+            crate::IoKitError::InvalidArgument("report id exceeds CFIndex range".to_string())
+        })?;
+        let report_length = ffi_impl::CFIndex::try_from(report.len()).map_err(|_| {
             crate::IoKitError::InvalidArgument("report buffer exceeds CFIndex::MAX bytes".to_string())
         })?;
         io_result(
@@ -649,10 +652,10 @@ impl HidDevice {
     pub unsafe fn set_report_with_callback_raw(
         &self,
         report_type: HidReportType,
-        report_id: isize,
+        report_id: ffi_impl::CFIndex,
         report: *const u8,
-        report_length: isize,
-        timeout: f64,
+        report_length: ffi_impl::CFIndex,
+        timeout: ffi_impl::CFTimeInterval,
         callback: Option<ffi_impl::IOHIDReportCallback>,
         context: *mut c_void,
     ) -> Result<()> {
@@ -679,7 +682,10 @@ impl HidDevice {
         report_id: isize,
         report: &mut [u8],
     ) -> Result<usize> {
-        let mut report_length = isize::try_from(report.len()).map_err(|_| {
+        let report_id = ffi_impl::CFIndex::try_from(report_id).map_err(|_| {
+            crate::IoKitError::InvalidArgument("report id exceeds CFIndex range".to_string())
+        })?;
+        let mut report_length = ffi_impl::CFIndex::try_from(report.len()).map_err(|_| {
             crate::IoKitError::InvalidArgument("report buffer exceeds CFIndex::MAX bytes".to_string())
         })?;
         io_result(

@@ -13,7 +13,7 @@ use crate::{
     CFValue,
 };
 
-pub const SERIALIZE_TO_BINARY: usize = ffi_impl::kIOCFSerializeToBinary;
+pub const SERIALIZE_TO_BINARY: ffi_impl::CFOptionFlags = ffi_impl::kIOCFSerializeToBinary;
 
 unsafe fn take_error_string(error_string: ffi_impl::CFStringRef) -> String {
     if error_string.is_null() {
@@ -26,7 +26,10 @@ unsafe fn take_error_string(error_string: ffi_impl::CFStringRef) -> String {
     message
 }
 
-pub unsafe fn serialize_raw(object: ffi_impl::CFTypeRef, options: usize) -> Option<Vec<u8>> {
+pub unsafe fn serialize_raw(
+    object: ffi_impl::CFTypeRef,
+    options: ffi_impl::CFOptionFlags,
+) -> Option<Vec<u8>> {
     match unsafe { take_value(ffi_impl::IOCFSerialize(object, options).cast()) } {
         Some(CFValue::Data(bytes)) => Some(bytes),
         _ => None,

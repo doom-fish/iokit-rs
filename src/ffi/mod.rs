@@ -12,13 +12,10 @@ use core::ffi::{c_char, c_void};
 
 pub use apple_cf::raw::{
     CFAllocatorRef, CFArrayRef, CFBooleanRef, CFDataRef, CFDateRef, CFDictionaryRef,
-    CFMutableDictionaryRef, CFNumberRef, CFRunLoopRef, CFRunLoopSourceRef, CFSetRef,
-    CFStringRef, CFTypeRef, CFUUIDRef,
+    CFIndex, CFMutableDictionaryRef, CFNumberRef, CFOptionFlags, CFRunLoopRef,
+    CFRunLoopSourceRef, CFSetRef, CFStringRef, CFTimeInterval, CFTypeID, CFTypeRef,
+    CFUUIDRef,
 };
-pub type CFIndex = isize;
-pub type CFTypeID = usize;
-pub type CFOptionFlags = usize;
-pub type CFTimeInterval = f64;
 pub type kern_return_t = i32;
 pub type IOReturn = i32;
 pub type IOOptionBits = u32;
@@ -150,7 +147,7 @@ pub const kIORegistryIterateRecursively: u32 = 0x0000_0001;
 pub const kIORegistryIterateParents: u32 = 0x0000_0002;
 pub const kIOServiceInteractionAllowed: u32 = 0x0000_0001;
 pub const kIOMainPortDefault: mach_port_t = 0;
-pub const kIOCFSerializeToBinary: usize = 0x0000_0001;
+pub const kIOCFSerializeToBinary: CFOptionFlags = 0x0000_0001;
 pub const kIOCatalogAddDrivers: u32 = 1;
 pub const kIOCatalogAddDriversNoMatch: u32 = 2;
 pub const kIOCatalogRemoveDrivers: u32 = 3;

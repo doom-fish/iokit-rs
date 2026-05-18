@@ -76,7 +76,7 @@ unsafe fn value_from_ref(raw: ffi::CFTypeRef) -> CFValue {
         return if ok {
             CFValue::Integer(value)
         } else {
-            CFValue::Unknown(u64::try_from(type_id).unwrap_or_default())
+            CFValue::Unknown(type_id)
         };
     }
 
@@ -118,7 +118,7 @@ unsafe fn value_from_ref(raw: ffi::CFTypeRef) -> CFValue {
         return CFValue::Dictionary(map);
     }
 
-    CFValue::Unknown(u64::try_from(type_id).unwrap_or_default())
+    CFValue::Unknown(type_id)
 }
 
 unsafe fn key_to_string(raw: ffi::CFTypeRef) -> String {

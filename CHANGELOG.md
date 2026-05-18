@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0] - 2026-05-18
+
+- Re-exported `CFIndex`, `CFTypeID`, `CFTimeInterval`, and `CFOptionFlags` from
+  `apple_cf::raw` instead of maintaining local raw typedef duplicates in
+  `src/ffi/mod.rs`.
+- Widened the `apple-cf` dependency range from `>=0.8, <0.9` to
+  `>=0.9, <0.10`.
+- This is a breaking raw-FFI change: the public `ffi` module now sources four
+  additional Core Foundation aliases from `apple-cf`.
+
 ## [0.4.0] - 2026-05-18
 
 - Added `apple-cf` as a dependency and re-exported the raw `CF*Ref` aliases from
