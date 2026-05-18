@@ -7,7 +7,10 @@ fn main() -> iokit::Result<()> {
 
     println!("main port = {main_port}");
     println!("global busy state = {busy_state}");
-    println!("registry root = {}", root_name.unwrap_or_else(|| "<unknown>".to_string()));
+    println!(
+        "registry root = {}",
+        root_name.unwrap_or_else(|| "<unknown>".to_string())
+    );
 
     if let Some(service) = bsd_name_matching_service("disk0")? {
         println!("disk0 service class = {}", service.class_name()?);

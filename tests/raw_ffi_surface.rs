@@ -76,16 +76,20 @@ fn exposes_low_level_raw_gap_surface() {
             *mut ffi::CFStringRef,
         ) -> ffi::CFTypeRef;
 
-    let _data_available = ffi::IODataQueueDataAvailable
-        as unsafe extern "C" fn(*mut ffi::IODataQueueMemory) -> u8;
+    let _data_available =
+        ffi::IODataQueueDataAvailable as unsafe extern "C" fn(*mut ffi::IODataQueueMemory) -> u8;
     let _peek = ffi::IODataQueuePeek
         as unsafe extern "C" fn(*mut ffi::IODataQueueMemory) -> *mut ffi::IODataQueueEntry;
     let _dequeue = ffi::IODataQueueDequeue
-        as unsafe extern "C" fn(*mut ffi::IODataQueueMemory, *mut c_void, *mut u32) -> ffi::IOReturn;
+        as unsafe extern "C" fn(
+            *mut ffi::IODataQueueMemory,
+            *mut c_void,
+            *mut u32,
+        ) -> ffi::IOReturn;
     let _wait = ffi::IODataQueueWaitForAvailableData
         as unsafe extern "C" fn(*mut ffi::IODataQueueMemory, ffi::mach_port_t) -> ffi::IOReturn;
-    let _allocate_port = ffi::IODataQueueAllocateNotificationPort
-        as unsafe extern "C" fn() -> ffi::mach_port_t;
+    let _allocate_port =
+        ffi::IODataQueueAllocateNotificationPort as unsafe extern "C" fn() -> ffi::mach_port_t;
     let _enqueue = ffi::IODataQueueEnqueue
         as unsafe extern "C" fn(*mut ffi::IODataQueueMemory, *mut c_void, u32) -> ffi::IOReturn;
     let _set_notification_port = ffi::IODataQueueSetNotificationPort

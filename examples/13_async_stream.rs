@@ -19,7 +19,9 @@
 #[cfg(feature = "async")]
 fn main() {
     use iokit::{
-        async_api::{PowerSourceStream, ServiceInterestStream, ServiceMatchStream, SystemPowerStream},
+        async_api::{
+            PowerSourceStream, ServiceInterestStream, ServiceMatchStream, SystemPowerStream,
+        },
         matching_service, GENERAL_INTEREST,
     };
     use std::time::Duration;
@@ -63,7 +65,9 @@ fn main() {
                     );
                 }
                 Some(None) | None => {
-                    println!("    no match/terminate event within timeout (expected on quiet system)");
+                    println!(
+                        "    no match/terminate event within timeout (expected on quiet system)"
+                    );
                 }
             }
         }
@@ -144,4 +148,3 @@ fn main() {
     eprintln!("Rerun with --features async");
     std::process::exit(1);
 }
-

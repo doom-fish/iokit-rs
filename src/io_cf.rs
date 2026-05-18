@@ -13,6 +13,7 @@ use crate::{
     CFValue,
 };
 
+/// Wraps `kIOCFSerializeToBinary`.
 pub const SERIALIZE_TO_BINARY: ffi_impl::CFOptionFlags = ffi_impl::kIOCFSerializeToBinary;
 
 unsafe fn take_error_string(error_string: ffi_impl::CFStringRef) -> String {
@@ -26,6 +27,11 @@ unsafe fn take_error_string(error_string: ffi_impl::CFStringRef) -> String {
     message
 }
 
+/// Wraps `IOCFSerialize`.
+///
+/// # Safety
+///
+/// `object` must be a valid `CFTypeRef` accepted by `IOCFSerialize`.
 pub unsafe fn serialize_raw(
     object: ffi_impl::CFTypeRef,
     options: ffi_impl::CFOptionFlags,
@@ -36,6 +42,7 @@ pub unsafe fn serialize_raw(
     }
 }
 
+/// Wraps `IOCFUnserialize`.
 pub fn unserialize(buffer: &str) -> Result<CFValue> {
     let buffer = c_string(buffer)?;
     let mut error_string = core::ptr::null();
@@ -56,6 +63,7 @@ pub fn unserialize(buffer: &str) -> Result<CFValue> {
     unsafe { take_value(value) }.ok_or(crate::IoKitError::UnexpectedNull("IOCFUnserialize"))
 }
 
+/// Wraps `IOCFUnserializeBinary`.
 pub fn unserialize_binary(buffer: &[u8]) -> Result<CFValue> {
     let mut error_string = core::ptr::null();
     let value = unsafe {
@@ -73,10 +81,10 @@ pub fn unserialize_binary(buffer: &[u8]) -> Result<CFValue> {
         }));
     }
 
-    unsafe { take_value(value) }
-        .ok_or(crate::IoKitError::UnexpectedNull("IOCFUnserializeBinary"))
+    unsafe { take_value(value) }.ok_or(crate::IoKitError::UnexpectedNull("IOCFUnserializeBinary"))
 }
 
+/// Wraps `IOCFUnserializeWithSize`.
 pub fn unserialize_with_size(buffer: &[u8]) -> Result<CFValue> {
     let mut error_string = core::ptr::null();
     let value = unsafe {
@@ -94,6 +102,5 @@ pub fn unserialize_with_size(buffer: &[u8]) -> Result<CFValue> {
         }));
     }
 
-    unsafe { take_value(value) }
-        .ok_or(crate::IoKitError::UnexpectedNull("IOCFUnserializeWithSize"))
+    unsafe { take_value(value) }.ok_or(crate::IoKitError::UnexpectedNull("IOCFUnserializeWithSize"))
 }

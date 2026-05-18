@@ -148,9 +148,7 @@ pub fn bsd_name_matching_services_iterator_for_port(
 
     let mut iterator = 0_u32;
     io_result(
-        unsafe {
-            ffi_impl::IOServiceGetMatchingServices(main_port, matching, &mut iterator)
-        },
+        unsafe { ffi_impl::IOServiceGetMatchingServices(main_port, matching, &mut iterator) },
         "IOServiceGetMatchingServices",
     )?;
     Ok(wrap_iterator(iterator))

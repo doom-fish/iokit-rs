@@ -11,10 +11,9 @@
 use core::ffi::{c_char, c_void};
 
 pub use apple_cf::raw::{
-    CFAllocatorRef, CFArrayRef, CFBooleanRef, CFDataRef, CFDateRef, CFDictionaryRef,
-    CFIndex, CFMutableDictionaryRef, CFNumberRef, CFOptionFlags, CFRunLoopRef,
-    CFRunLoopSourceRef, CFSetRef, CFStringRef, CFTimeInterval, CFTypeID, CFTypeRef,
-    CFUUIDRef,
+    CFAllocatorRef, CFArrayRef, CFBooleanRef, CFDataRef, CFDateRef, CFDictionaryRef, CFIndex,
+    CFMutableDictionaryRef, CFNumberRef, CFOptionFlags, CFRunLoopRef, CFRunLoopSourceRef, CFSetRef,
+    CFStringRef, CFTimeInterval, CFTypeID, CFTypeRef, CFUUIDRef,
 };
 pub type kern_return_t = i32;
 pub type IOReturn = i32;
@@ -262,8 +261,7 @@ pub const K_IOSystemLoadAdvisoryBatteryLevelKey: &str = "BatteryLevel";
 pub const K_IOSystemLoadAdvisoryThermalLevelKey: &str = "ThermalLevel";
 pub const K_IOSystemLoadAdvisoryCombinedLevelKey: &str = "CombinedLevel";
 pub const K_IOPMCPUPowerNotificationKey: &str = "com.apple.system.power.CPU";
-pub const K_IOPMThermalWarningNotificationKey: &str =
-    "com.apple.system.power.thermal_warning";
+pub const K_IOPMThermalWarningNotificationKey: &str = "com.apple.system.power.thermal_warning";
 
 pub const K_IOPSNotifyLowBattery: &str = "com.apple.system.powersources.lowbattery";
 pub const K_IOPSNotifyTimeRemaining: &str = "com.apple.system.powersources.timeremaining";
@@ -452,10 +450,8 @@ unsafe extern "C" {
         wait_time: *mut mach_timespec_t,
     ) -> kern_return_t;
     pub fn IOKitGetBusyState(main_port: mach_port_t, busy_state: *mut u32) -> kern_return_t;
-    pub fn IOKitWaitQuiet(
-        main_port: mach_port_t,
-        wait_time: *mut mach_timespec_t,
-    ) -> kern_return_t;
+    pub fn IOKitWaitQuiet(main_port: mach_port_t, wait_time: *mut mach_timespec_t)
+        -> kern_return_t;
     pub fn IOServiceOpen(
         service: io_service_t,
         owning_task: task_port_t,
@@ -961,14 +957,8 @@ unsafe extern "C" {
     pub fn IOHIDManagerSetCancelHandler(manager: IOHIDManagerRef, handler: dispatch_block_t);
     pub fn IOHIDManagerActivate(manager: IOHIDManagerRef);
     pub fn IOHIDManagerCancel(manager: IOHIDManagerRef);
-    pub fn IOHIDManagerSetDeviceMatching(
-        manager: IOHIDManagerRef,
-        matching: CFDictionaryRef,
-    );
-    pub fn IOHIDManagerSetDeviceMatchingMultiple(
-        manager: IOHIDManagerRef,
-        multiple: CFArrayRef,
-    );
+    pub fn IOHIDManagerSetDeviceMatching(manager: IOHIDManagerRef, matching: CFDictionaryRef);
+    pub fn IOHIDManagerSetDeviceMatchingMultiple(manager: IOHIDManagerRef, multiple: CFArrayRef);
     pub fn IOHIDManagerCopyDevices(manager: IOHIDManagerRef) -> CFSetRef;
     pub fn IOHIDManagerRegisterDeviceMatchingCallback(
         manager: IOHIDManagerRef,
@@ -995,10 +985,7 @@ unsafe extern "C" {
         callback: Option<IOHIDValueCallback>,
         context: *mut c_void,
     );
-    pub fn IOHIDManagerSetInputValueMatching(
-        manager: IOHIDManagerRef,
-        matching: CFDictionaryRef,
-    );
+    pub fn IOHIDManagerSetInputValueMatching(manager: IOHIDManagerRef, matching: CFDictionaryRef);
     pub fn IOHIDManagerSetInputValueMatchingMultiple(
         manager: IOHIDManagerRef,
         multiple: CFArrayRef,
@@ -1016,11 +1003,7 @@ unsafe extern "C" {
     pub fn IOHIDDeviceGetService(device: IOHIDDeviceRef) -> io_service_t;
     pub fn IOHIDDeviceOpen(device: IOHIDDeviceRef, options: IOOptionBits) -> IOReturn;
     pub fn IOHIDDeviceClose(device: IOHIDDeviceRef, options: IOOptionBits) -> IOReturn;
-    pub fn IOHIDDeviceConformsTo(
-        device: IOHIDDeviceRef,
-        usage_page: u32,
-        usage: u32,
-    ) -> u8;
+    pub fn IOHIDDeviceConformsTo(device: IOHIDDeviceRef, usage_page: u32, usage: u32) -> u8;
     pub fn IOHIDDeviceGetProperty(device: IOHIDDeviceRef, key: CFStringRef) -> CFTypeRef;
     pub fn IOHIDDeviceSetProperty(
         device: IOHIDDeviceRef,
@@ -1070,14 +1053,8 @@ unsafe extern "C" {
         callback: Option<IOHIDReportWithTimeStampCallback>,
         context: *mut c_void,
     );
-    pub fn IOHIDDeviceSetInputValueMatching(
-        device: IOHIDDeviceRef,
-        matching: CFDictionaryRef,
-    );
-    pub fn IOHIDDeviceSetInputValueMatchingMultiple(
-        device: IOHIDDeviceRef,
-        multiple: CFArrayRef,
-    );
+    pub fn IOHIDDeviceSetInputValueMatching(device: IOHIDDeviceRef, matching: CFDictionaryRef);
+    pub fn IOHIDDeviceSetInputValueMatchingMultiple(device: IOHIDDeviceRef, multiple: CFArrayRef);
     pub fn IOHIDDeviceSetValue(
         device: IOHIDDeviceRef,
         element: IOHIDElementRef,

@@ -8,7 +8,7 @@
 #![cfg(feature = "async")]
 
 use iokit::async_api::{
-    PowerSourceStream, ServiceMatchStream, ServiceInterestStream, SystemPowerStream,
+    PowerSourceStream, ServiceInterestStream, ServiceMatchStream, SystemPowerStream,
 };
 use iokit::{matching_service, GENERAL_INTEREST};
 

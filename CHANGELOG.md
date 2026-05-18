@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1] - 2026-05-18
+
+- Added `///` docs for the public `cf`, `error`, `io_cf`, `io_connect`, and
+  `io_hi_backing_store` surfaces plus top-level module docs, raising rustdoc
+  coverage above 60%.
+- Kept the public docs aligned with the corresponding `IOKit` framework entry
+  points by referencing the wrapped APIs directly.
+
 ## [0.5.0] - 2026-05-18
 
 - Re-exported `CFIndex`, `CFTypeID`, `CFTimeInterval`, and `CFOptionFlags` from

@@ -15,12 +15,16 @@ use core::{ffi::c_void, ptr};
 use std::ptr::NonNull;
 
 #[derive(Debug)]
+/// Combined output buffers returned by `IOConnectCallMethod`.
 pub struct ConnectCallOutput {
+    /// Scalar output values filled by `IOConnectCallMethod`.
     pub scalars: Vec<u64>,
+    /// Structure output bytes filled by `IOConnectCallMethod`.
     pub structure: Vec<u8>,
 }
 
 #[derive(Debug)]
+/// Safe retained wrapper around an `io_connect_t` handle returned by `IOServiceOpen`.
 pub struct Connect {
     raw: NonNull<c_void>,
 }
@@ -34,10 +38,12 @@ impl Connect {
         self.raw.as_ptr()
     }
 
+    /// Wraps `IOConnectGetService`.
     pub fn get_service(&self) -> Option<Service> {
         Service::from_raw(unsafe { bridge::iokit_swift_connect_get_service(self.as_ptr()) })
     }
 
+    /// Wraps `IOConnectSetNotificationPort`.
     pub fn set_notification_port(
         &self,
         port: &NotificationPort,
@@ -57,6 +63,7 @@ impl Connect {
         )
     }
 
+    /// Wraps `IOConnectAddClient`.
     pub fn add_client(&self, other: &Self) -> Result<()> {
         io_result(
             unsafe { bridge::iokit_swift_connect_add_client(self.as_ptr(), other.as_ptr()) },
@@ -64,6 +71,7 @@ impl Connect {
         )
     }
 
+    /// Wraps `IOConnectCallScalarMethod`.
     pub fn call_scalar_method(
         &self,
         selector: u32,
@@ -89,6 +97,7 @@ impl Connect {
         Ok(output)
     }
 
+    /// Wraps `IOConnectCallStructMethod`.
     pub fn call_struct_method(
         &self,
         selector: u32,
@@ -118,6 +127,7 @@ impl Connect {
         Ok(output)
     }
 
+    /// Wraps `IOConnectCallMethod`.
     pub fn call_method(
         &self,
         selector: u32,

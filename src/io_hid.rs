@@ -28,8 +28,7 @@ pub const HID_MANAGER_OPTION_DO_NOT_SAVE_PROPERTIES: u32 =
 pub const HID_MANAGER_OPTION_INDEPENDENT_DEVICES: u32 =
     ffi_impl::kIOHIDManagerOptionIndependentDevices;
 pub const HID_DEVICE_GET_VALUE_WITH_UPDATE: u32 = ffi_impl::kIOHIDDeviceGetValueWithUpdate;
-pub const HID_DEVICE_GET_VALUE_WITHOUT_UPDATE: u32 =
-    ffi_impl::kIOHIDDeviceGetValueWithoutUpdate;
+pub const HID_DEVICE_GET_VALUE_WITHOUT_UPDATE: u32 = ffi_impl::kIOHIDDeviceGetValueWithoutUpdate;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HidReportType {
@@ -63,7 +62,9 @@ impl OwnedCfString {
             )
         };
         if raw.is_null() {
-            return Err(crate::IoKitError::UnexpectedNull("CFStringCreateWithCString"));
+            return Err(crate::IoKitError::UnexpectedNull(
+                "CFStringCreateWithCString",
+            ));
         }
         Ok(Self { raw })
     }
@@ -140,7 +141,9 @@ impl HidManager {
         run_loop: ffi_impl::CFRunLoopRef,
         run_loop_mode: ffi_impl::CFStringRef,
     ) {
-        unsafe { ffi_impl::IOHIDManagerScheduleWithRunLoop(self.as_raw(), run_loop, run_loop_mode) };
+        unsafe {
+            ffi_impl::IOHIDManagerScheduleWithRunLoop(self.as_raw(), run_loop, run_loop_mode);
+        };
     }
 
     pub unsafe fn unschedule_from_run_loop_raw(
@@ -183,7 +186,8 @@ impl HidManager {
             return Vec::new();
         }
 
-        let count = usize::try_from(unsafe { ffi_impl::CFSetGetCount(device_set) }).unwrap_or_default();
+        let count =
+            usize::try_from(unsafe { ffi_impl::CFSetGetCount(device_set) }).unwrap_or_default();
         let mut values = vec![ptr::null(); count];
         unsafe { ffi_impl::CFSetGetValues(device_set, values.as_mut_ptr()) };
         let devices = values
@@ -249,7 +253,9 @@ impl HidManager {
         callback: Option<ffi_impl::IOHIDValueCallback>,
         context: *mut c_void,
     ) {
-        unsafe { ffi_impl::IOHIDManagerRegisterInputValueCallback(self.as_raw(), callback, context) };
+        unsafe {
+            ffi_impl::IOHIDManagerRegisterInputValueCallback(self.as_raw(), callback, context);
+        };
     }
 
     pub unsafe fn set_input_value_matching_raw(&self, matching: ffi_impl::CFDictionaryRef) {
@@ -366,7 +372,11 @@ impl HidDevice {
         }
     }
 
-    pub unsafe fn set_property_raw(&self, key: &str, property: ffi_impl::CFTypeRef) -> Result<bool> {
+    pub unsafe fn set_property_raw(
+        &self,
+        key: &str,
+        property: ffi_impl::CFTypeRef,
+    ) -> Result<bool> {
         let key = OwnedCfString::new(key)?;
         Ok(unsafe { ffi_impl::IOHIDDeviceSetProperty(self.as_raw(), key.as_raw(), property) != 0 })
     }
@@ -377,7 +387,9 @@ impl HidDevice {
         options: u32,
     ) -> Option<CFValue> {
         unsafe {
-            take_value(ffi_impl::IOHIDDeviceCopyMatchingElements(self.as_raw(), matching, options).cast())
+            take_value(
+                ffi_impl::IOHIDDeviceCopyMatchingElements(self.as_raw(), matching, options).cast(),
+            )
         }
     }
 
@@ -432,7 +444,9 @@ impl HidDevice {
         callback: Option<ffi_impl::IOHIDValueCallback>,
         context: *mut c_void,
     ) {
-        unsafe { ffi_impl::IOHIDDeviceRegisterInputValueCallback(self.as_raw(), callback, context) };
+        unsafe {
+            ffi_impl::IOHIDDeviceRegisterInputValueCallback(self.as_raw(), callback, context);
+        };
     }
 
     pub unsafe fn register_input_report_callback(
@@ -572,7 +586,9 @@ impl HidDevice {
         multiple_out: *mut ffi_impl::CFDictionaryRef,
     ) -> Result<()> {
         io_result(
-            unsafe { ffi_impl::IOHIDDeviceCopyValueMultiple(self.as_raw(), elements, multiple_out) },
+            unsafe {
+                ffi_impl::IOHIDDeviceCopyValueMultiple(self.as_raw(), elements, multiple_out)
+            },
             "IOHIDDeviceCopyValueMultiple",
         )
     }
@@ -633,7 +649,9 @@ impl HidDevice {
             crate::IoKitError::InvalidArgument("report id exceeds CFIndex range".to_string())
         })?;
         let report_length = ffi_impl::CFIndex::try_from(report.len()).map_err(|_| {
-            crate::IoKitError::InvalidArgument("report buffer exceeds CFIndex::MAX bytes".to_string())
+            crate::IoKitError::InvalidArgument(
+                "report buffer exceeds CFIndex::MAX bytes".to_string(),
+            )
         })?;
         io_result(
             unsafe {
@@ -686,7 +704,9 @@ impl HidDevice {
             crate::IoKitError::InvalidArgument("report id exceeds CFIndex range".to_string())
         })?;
         let mut report_length = ffi_impl::CFIndex::try_from(report.len()).map_err(|_| {
-            crate::IoKitError::InvalidArgument("report buffer exceeds CFIndex::MAX bytes".to_string())
+            crate::IoKitError::InvalidArgument(
+                "report buffer exceeds CFIndex::MAX bytes".to_string(),
+            )
         })?;
         io_result(
             unsafe {

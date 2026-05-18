@@ -77,7 +77,9 @@ use doom_fish_utils::panic_safe::catch_user_panic;
 use doom_fish_utils::stream::{AsyncStreamSender, BoundedAsyncStream, NextItem};
 use std::ffi::c_void;
 
-use crate::{bridge, error::Result, io_message::IoMessage, io_service::Service, object::c_string, IoKitError};
+use crate::{
+    bridge, error::Result, io_message::IoMessage, io_service::Service, object::c_string, IoKitError,
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // 1. ServiceInterestStream
@@ -122,11 +124,7 @@ pub struct ServiceInterestStream {
     _handle: ServiceInterestHandle,
 }
 
-unsafe extern "C" fn service_interest_cb(
-    kind: i32,
-    payload: *const c_void,
-    ctx: *mut c_void,
-) {
+unsafe extern "C" fn service_interest_cb(kind: i32, payload: *const c_void, ctx: *mut c_void) {
     // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
     // callback lifetime — unsubscribe() drains the dispatch queue before
     // dropping the sender box.
@@ -161,12 +159,19 @@ impl ServiceInterestStream {
             )
         };
         if bridge_ptr.is_null() {
-            unsafe { drop(Box::from_raw(sender_ptr)); }
-            return Err(IoKitError::UnexpectedNull("iokit_swift_service_interest_subscribe"));
+            unsafe {
+                drop(Box::from_raw(sender_ptr));
+            }
+            return Err(IoKitError::UnexpectedNull(
+                "iokit_swift_service_interest_subscribe",
+            ));
         }
         Ok(Self {
             inner: stream,
-            _handle: ServiceInterestHandle { bridge_ptr, sender_ptr },
+            _handle: ServiceInterestHandle {
+                bridge_ptr,
+                sender_ptr,
+            },
         })
     }
 
@@ -257,11 +262,7 @@ pub struct ServiceMatchStream {
     _handle: ServiceMatchHandle,
 }
 
-unsafe extern "C" fn service_match_cb(
-    kind: i32,
-    payload: *const c_void,
-    ctx: *mut c_void,
-) {
+unsafe extern "C" fn service_match_cb(kind: i32, payload: *const c_void, ctx: *mut c_void) {
     // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
     // callback lifetime — unsubscribe() drains the dispatch queue before
     // dropping the sender box.
@@ -279,7 +280,10 @@ unsafe extern "C" fn service_match_cb(
         ServiceMatchKind::Terminated
     };
     catch_user_panic("service_match_cb", || {
-        sender.push(ServiceMatchEvent { kind: event_kind, service });
+        sender.push(ServiceMatchEvent {
+            kind: event_kind,
+            service,
+        });
     });
 }
 
@@ -303,12 +307,19 @@ impl ServiceMatchStream {
             )
         };
         if bridge_ptr.is_null() {
-            unsafe { drop(Box::from_raw(sender_ptr)); }
-            return Err(IoKitError::UnexpectedNull("iokit_swift_service_match_subscribe"));
+            unsafe {
+                drop(Box::from_raw(sender_ptr));
+            }
+            return Err(IoKitError::UnexpectedNull(
+                "iokit_swift_service_match_subscribe",
+            ));
         }
         Ok(Self {
             inner: stream,
-            _handle: ServiceMatchHandle { bridge_ptr, sender_ptr },
+            _handle: ServiceMatchHandle {
+                bridge_ptr,
+                sender_ptr,
+            },
         })
     }
 
@@ -369,11 +380,7 @@ pub struct PowerSourceStream {
     _handle: PowerSourceHandle,
 }
 
-unsafe extern "C" fn power_source_cb(
-    _kind: i32,
-    _payload: *const c_void,
-    ctx: *mut c_void,
-) {
+unsafe extern "C" fn power_source_cb(_kind: i32, _payload: *const c_void, ctx: *mut c_void) {
     // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
     // callback lifetime — unsubscribe() removes the run-loop source and drains
     // the serial queue before dropping the sender box.
@@ -398,12 +405,19 @@ impl PowerSourceStream {
             bridge::iokit_swift_power_source_subscribe(power_source_cb, sender_ptr.cast())
         };
         if bridge_ptr.is_null() {
-            unsafe { drop(Box::from_raw(sender_ptr)); }
-            return Err(IoKitError::UnexpectedNull("iokit_swift_power_source_subscribe"));
+            unsafe {
+                drop(Box::from_raw(sender_ptr));
+            }
+            return Err(IoKitError::UnexpectedNull(
+                "iokit_swift_power_source_subscribe",
+            ));
         }
         Ok(Self {
             inner: stream,
-            _handle: PowerSourceHandle { bridge_ptr, sender_ptr },
+            _handle: PowerSourceHandle {
+                bridge_ptr,
+                sender_ptr,
+            },
         })
     }
 
@@ -489,11 +503,7 @@ pub struct SystemPowerStream {
     _handle: SystemPowerHandle,
 }
 
-unsafe extern "C" fn system_power_cb(
-    kind: i32,
-    _payload: *const c_void,
-    ctx: *mut c_void,
-) {
+unsafe extern "C" fn system_power_cb(kind: i32, _payload: *const c_void, ctx: *mut c_void) {
     // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
     // callback lifetime — unsubscribe() removes the run-loop source and drains
     // the serial queue before dropping the sender box.
@@ -518,12 +528,19 @@ impl SystemPowerStream {
             bridge::iokit_swift_system_power_subscribe(system_power_cb, sender_ptr.cast())
         };
         if bridge_ptr.is_null() {
-            unsafe { drop(Box::from_raw(sender_ptr)); }
-            return Err(IoKitError::UnexpectedNull("iokit_swift_system_power_subscribe"));
+            unsafe {
+                drop(Box::from_raw(sender_ptr));
+            }
+            return Err(IoKitError::UnexpectedNull(
+                "iokit_swift_system_power_subscribe",
+            ));
         }
         Ok(Self {
             inner: stream,
-            _handle: SystemPowerHandle { bridge_ptr, sender_ptr },
+            _handle: SystemPowerHandle {
+                bridge_ptr,
+                sender_ptr,
+            },
         })
     }
 

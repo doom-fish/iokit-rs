@@ -6,17 +6,27 @@ use std::{collections::BTreeMap, ffi::CStr};
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
+/// Snapshot of a Core Foundation value returned by `IOKit` APIs such as
+/// `IORegistryEntryCreateCFProperties` and `IOPMCopyAssertionsByProcess`.
 pub enum CFValue {
+    /// Wraps a `CFStringRef` value.
     String(String),
+    /// Wraps a `CFNumberRef` converted to `i64`.
     Integer(i64),
+    /// Wraps a `CFBooleanRef` value.
     Boolean(bool),
+    /// Wraps a `CFDataRef` value.
     Data(Vec<u8>),
+    /// Wraps a `CFArrayRef` value.
     Array(Vec<Self>),
+    /// Wraps a `CFDictionaryRef` value keyed by stringified entries.
     Dictionary(BTreeMap<String, Self>),
+    /// Wraps an unsupported Core Foundation type by `CFTypeID`.
     Unknown(u64),
 }
 
 impl CFValue {
+    /// Returns the Core Foundation-like kind name for this snapshot value.
     #[must_use]
     pub const fn kind_name(&self) -> &'static str {
         match self {

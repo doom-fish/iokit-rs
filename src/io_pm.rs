@@ -40,10 +40,8 @@ pub const CPU_POWER_LIMIT_SCHEDULER_TIME_KEY: &str = ffi_impl::K_IOPMCPUPowerLim
 pub const ASSERTION_TIMEOUT_KEY: &str = ffi_impl::K_IOPMAssertionTimeoutKey;
 pub const ASSERTION_TIMEOUT_ACTION_KEY: &str = ffi_impl::K_IOPMAssertionTimeoutActionKey;
 pub const ASSERTION_TIMEOUT_ACTION_LOG: &str = ffi_impl::K_IOPMAssertionTimeoutActionLog;
-pub const ASSERTION_TIMEOUT_ACTION_TURN_OFF: &str =
-    ffi_impl::K_IOPMAssertionTimeoutActionTurnOff;
-pub const ASSERTION_TIMEOUT_ACTION_RELEASE: &str =
-    ffi_impl::K_IOPMAssertionTimeoutActionRelease;
+pub const ASSERTION_TIMEOUT_ACTION_TURN_OFF: &str = ffi_impl::K_IOPMAssertionTimeoutActionTurnOff;
+pub const ASSERTION_TIMEOUT_ACTION_RELEASE: &str = ffi_impl::K_IOPMAssertionTimeoutActionRelease;
 pub const ASSERTION_RETAIN_COUNT_KEY: &str = ffi_impl::K_IOPMAssertionRetainCountKey;
 pub const ASSERTION_NAME_KEY: &str = ffi_impl::K_IOPMAssertionNameKey;
 pub const ASSERTION_DETAILS_KEY: &str = ffi_impl::K_IOPMAssertionDetailsKey;
@@ -56,8 +54,7 @@ pub const ASSERTION_PLUGIN_ID_KEY: &str = ffi_impl::K_IOPMAssertionPlugInIDKey;
 pub const ASSERTION_TYPE_KEY: &str = ffi_impl::K_IOPMAssertionTypeKey;
 pub const ASSERTION_LEVEL_KEY: &str = ffi_impl::K_IOPMAssertionLevelKey;
 pub const SYSTEM_LOAD_ADVISORY_NOTIFY_NAME: &str = ffi_impl::K_IOSystemLoadAdvisoryNotifyName;
-pub const SYSTEM_LOAD_ADVISORY_USER_LEVEL_KEY: &str =
-    ffi_impl::K_IOSystemLoadAdvisoryUserLevelKey;
+pub const SYSTEM_LOAD_ADVISORY_USER_LEVEL_KEY: &str = ffi_impl::K_IOSystemLoadAdvisoryUserLevelKey;
 pub const SYSTEM_LOAD_ADVISORY_BATTERY_LEVEL_KEY: &str =
     ffi_impl::K_IOSystemLoadAdvisoryBatteryLevelKey;
 pub const SYSTEM_LOAD_ADVISORY_THERMAL_LEVEL_KEY: &str =
