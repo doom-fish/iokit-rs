@@ -17,6 +17,7 @@ pub enum IoKitError {
     InvalidArgument(String),
 }
 
+/// Formats `IoKitError` values for human-readable diagnostics.
 impl fmt::Display for IoKitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -29,4 +30,5 @@ impl fmt::Display for IoKitError {
     }
 }
 
+/// Exposes `IoKitError` as a standard error type.
 impl std::error::Error for IoKitError {}

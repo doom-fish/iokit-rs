@@ -1,3 +1,5 @@
+//! Safe wrappers around `IORegistryEntry*` APIs.
+
 #![allow(
     clippy::missing_errors_doc,
     clippy::module_name_repetitions,
@@ -16,11 +18,15 @@ use crate::{
 use core::ffi::c_void;
 use std::ptr::NonNull;
 
+/// Wraps `K_IO_SERVICE_PLANE`.
 pub const SERVICE_PLANE: &str = ffi_impl::K_IO_SERVICE_PLANE;
+/// Wraps `kIORegistryIterateRecursively`.
 pub const REGISTRY_ITERATE_RECURSIVELY: u32 = ffi_impl::kIORegistryIterateRecursively;
+/// Wraps `kIORegistryIterateParents`.
 pub const REGISTRY_ITERATE_PARENTS: u32 = ffi_impl::kIORegistryIterateParents;
 
 #[derive(Debug)]
+/// Safe retained wrapper around an `io_registry_entry_t` handle.
 pub struct RegistryEntry {
     raw: NonNull<c_void>,
 }
@@ -34,6 +40,7 @@ impl RegistryEntry {
         self.raw.as_ptr()
     }
 
+    /// Wraps `IORegistryEntryFromPath` on `MAIN_PORT_DEFAULT`.
     pub fn from_path(path: &str) -> Result<Option<Self>> {
         let path = c_string(path)?;
         Ok(Self::from_raw(unsafe {
@@ -41,6 +48,7 @@ impl RegistryEntry {
         }))
     }
 
+    /// Wraps `IORegistryEntryGetName`.
     pub fn name(&self) -> Result<String> {
         unsafe {
             take_required_c_string(
@@ -50,6 +58,7 @@ impl RegistryEntry {
         }
     }
 
+    /// Wraps `IORegistryEntryGetNameInPlane`.
     pub fn name_in_plane(&self, plane: &str) -> Result<String> {
         let plane = c_string(plane)?;
         unsafe {
@@ -60,6 +69,7 @@ impl RegistryEntry {
         }
     }
 
+    /// Wraps `IORegistryEntryGetLocationInPlane`.
     pub fn location_in_plane(&self, plane: &str) -> Result<String> {
         let plane = c_string(plane)?;
         unsafe {
@@ -70,6 +80,7 @@ impl RegistryEntry {
         }
     }
 
+    /// Wraps `IORegistryEntryGetPath`.
     pub fn path(&self, plane: &str) -> Result<String> {
         let plane = c_string(plane)?;
         unsafe {
@@ -80,6 +91,7 @@ impl RegistryEntry {
         }
     }
 
+    /// Wraps `IORegistryEntryGetRegistryEntryID`.
     pub fn registry_entry_id(&self) -> Result<u64> {
         let mut entry_id = 0_u64;
         io_result(
@@ -91,10 +103,12 @@ impl RegistryEntry {
         Ok(entry_id)
     }
 
+    /// Copies the property dictionary for this registry entry.
     pub fn properties(&self) -> Option<CFValue> {
         unsafe { take_value(bridge::iokit_swift_registry_entry_properties(self.as_ptr()).cast()) }
     }
 
+    /// Copies a single property from this registry entry.
     pub fn property(&self, key: &str) -> Result<Option<CFValue>> {
         let key = c_string(key)?;
         Ok(unsafe {
@@ -104,6 +118,7 @@ impl RegistryEntry {
         })
     }
 
+    /// Wraps `IORegistryEntrySearchCFProperty`.
     pub fn search_property(&self, plane: &str, key: &str, options: u32) -> Result<Option<CFValue>> {
         let plane = c_string(plane)?;
         let key = c_string(key)?;
@@ -120,6 +135,7 @@ impl RegistryEntry {
         })
     }
 
+    /// Returns the parent entry in the given plane.
     pub fn parent(&self, plane: &str) -> Result<Option<Self>> {
         let plane = c_string(plane)?;
         Ok(Self::from_raw(unsafe {
@@ -127,6 +143,7 @@ impl RegistryEntry {
         }))
     }
 
+    /// Returns the first child entry in the given plane.
     pub fn child(&self, plane: &str) -> Result<Option<Self>> {
         let plane = c_string(plane)?;
         Ok(Self::from_raw(unsafe {
@@ -134,6 +151,7 @@ impl RegistryEntry {
         }))
     }
 
+    /// Returns an iterator over parent entries in the given plane.
     pub fn parent_iterator(&self, plane: &str) -> Result<Option<ObjectIterator>> {
         let plane = c_string(plane)?;
         Ok(ObjectIterator::from_raw(unsafe {
@@ -141,6 +159,7 @@ impl RegistryEntry {
         }))
     }
 
+    /// Returns an iterator over child entries in the given plane.
     pub fn child_iterator(&self, plane: &str) -> Result<Option<ObjectIterator>> {
         let plane = c_string(plane)?;
         Ok(ObjectIterator::from_raw(unsafe {
@@ -148,6 +167,7 @@ impl RegistryEntry {
         }))
     }
 
+    /// Wraps `IORegistryEntryCreateIterator`.
     pub fn create_iterator(&self, plane: &str, options: u32) -> Result<Option<ObjectIterator>> {
         let plane = c_string(plane)?;
         Ok(ObjectIterator::from_raw(unsafe {
@@ -159,12 +179,14 @@ impl RegistryEntry {
         }))
     }
 
+    /// Reports whether this entry exists in the given plane.
     pub fn in_plane(&self, plane: &str) -> Result<bool> {
         let plane = c_string(plane)?;
         Ok(unsafe { bridge::iokit_swift_registry_entry_in_plane(self.as_ptr(), plane.as_ptr()) })
     }
 }
 
+/// Clones the retained registry-entry handle.
 impl Clone for RegistryEntry {
     fn clone(&self) -> Self {
         let raw = unsafe { bridge::iokit_swift_registry_entry_retain(self.as_ptr()) };
@@ -174,6 +196,7 @@ impl Clone for RegistryEntry {
     }
 }
 
+/// Releases the retained registry-entry handle on drop.
 impl Drop for RegistryEntry {
     fn drop(&mut self) {
         unsafe { bridge::iokit_swift_registry_entry_release(self.as_ptr()) };

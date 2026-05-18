@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.2] - 2026-05-18
+
+- Completed a doc-pass over the remaining non-generated source, including helper modules, handle impls, and re-export module headers.
+- Raised nightly `rustdoc` coverage for the non-generated `src/` surface to 100.0% (`cargo +nightly rustdoc --lib --all-features -- -Z unstable-options --show-coverage`).
+
 ## [0.5.1] - 2026-05-18
 
 - Added `///` docs for the public `cf`, `error`, `io_cf`, `io_connect`, and

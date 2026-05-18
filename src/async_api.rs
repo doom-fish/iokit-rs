@@ -219,9 +219,12 @@ pub struct ServiceMatchEvent {
 
 // Safety: IOKit service objects use ARC-backed retain/release which is
 // thread-safe; IOKit registry operations are also thread-safe.
+/// `ServiceMatchEvent` can move across threads because it only carries retained handles.
 unsafe impl Send for ServiceMatchEvent {}
+/// `ServiceMatchEvent` can be shared across threads because it only carries retained handles.
 unsafe impl Sync for ServiceMatchEvent {}
 
+/// Formats `ServiceMatchEvent` for debugging without forcing a service snapshot.
 impl std::fmt::Debug for ServiceMatchEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ServiceMatchEvent")

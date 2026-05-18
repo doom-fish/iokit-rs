@@ -1,3 +1,5 @@
+//! Typed wrappers around public `IOMessage.h` constants.
+
 #![allow(
     clippy::missing_errors_doc,
     clippy::module_name_repetitions,
@@ -8,39 +10,70 @@ use crate::{bridge, ffi_impl};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
+/// Typed wrapper around public `IOMessage.h` constants.
 pub enum IoMessage {
+    /// Wraps `kIOMessageCanDevicePowerOff`.
     CanDevicePowerOff,
+    /// Wraps `kIOMessageCanSystemPowerOff`.
     CanSystemPowerOff,
+    /// Wraps `kIOMessageCanSystemSleep`.
     CanSystemSleep,
+    /// Wraps `kIOMessageConsoleSecurityChange`.
     ConsoleSecurityChange,
+    /// Wraps `kIOMessageCopyClientID`.
     CopyClientId,
+    /// Wraps `kIOMessageDeviceHasPoweredOff`.
     DeviceHasPoweredOff,
+    /// Wraps `kIOMessageDeviceHasPoweredOn`.
     DeviceHasPoweredOn,
+    /// Wraps `kIOMessageDeviceSignaledWakeup`.
     DeviceSignaledWakeup,
+    /// Wraps `kIOMessageDeviceWillNotPowerOff`.
     DeviceWillNotPowerOff,
+    /// Wraps `kIOMessageDeviceWillPowerOff`.
     DeviceWillPowerOff,
+    /// Wraps `kIOMessageDeviceWillPowerOn`.
     DeviceWillPowerOn,
+    /// Wraps `kIOMessageServiceBusyStateChange`.
     ServiceBusyStateChange,
+    /// Wraps `kIOMessageServiceIsAttemptingOpen`.
     ServiceIsAttemptingOpen,
+    /// Wraps `kIOMessageServiceIsRequestingClose`.
     ServiceIsRequestingClose,
+    /// Wraps `kIOMessageServiceIsResumed`.
     ServiceIsResumed,
+    /// Wraps `kIOMessageServiceIsSuspended`.
     ServiceIsSuspended,
+    /// Wraps `kIOMessageServiceIsTerminated`.
     ServiceIsTerminated,
+    /// Wraps `kIOMessageServicePropertyChange`.
     ServicePropertyChange,
+    /// Wraps `kIOMessageServiceWasClosed`.
     ServiceWasClosed,
+    /// Wraps `kIOMessageSystemCapabilityChange`.
     SystemCapabilityChange,
+    /// Wraps `kIOMessageSystemHasPoweredOn`.
     SystemHasPoweredOn,
+    /// Wraps `kIOMessageSystemPagingOff`.
     SystemPagingOff,
+    /// Wraps `kIOMessageSystemWillNotPowerOff`.
     SystemWillNotPowerOff,
+    /// Wraps `kIOMessageSystemWillNotSleep`.
     SystemWillNotSleep,
+    /// Wraps `kIOMessageSystemWillPowerOff`.
     SystemWillPowerOff,
+    /// Wraps `kIOMessageSystemWillPowerOn`.
     SystemWillPowerOn,
+    /// Wraps `kIOMessageSystemWillRestart`.
     SystemWillRestart,
+    /// Wraps `kIOMessageSystemWillSleep`.
     SystemWillSleep,
+    /// Wraps an unrecognized message constant.
     Unknown(u32),
 }
 
 impl IoMessage {
+    /// Builds an `IoMessage` from a raw `IOMessage.h` constant.
     pub const fn from_raw(raw: u32) -> Self {
         match raw {
             ffi_impl::kIOMessageCanDevicePowerOff => Self::CanDevicePowerOff,
@@ -75,6 +108,7 @@ impl IoMessage {
         }
     }
 
+    /// Returns the raw `IOMessage.h` constant for this message.
     pub const fn as_raw(self) -> u32 {
         match self {
             Self::CanDevicePowerOff => ffi_impl::kIOMessageCanDevicePowerOff,
@@ -109,6 +143,7 @@ impl IoMessage {
         }
     }
 
+    /// Returns every named message constant exposed by this crate.
     pub const fn all_known() -> &'static [Self] {
         const ALL: [IoMessage; 28] = [
             IoMessage::CanDevicePowerOff,
@@ -144,16 +179,20 @@ impl IoMessage {
     }
 }
 
+/// Alias for `IoMessage` when handling system power callbacks.
 pub type PowerMessage = IoMessage;
 
+/// Builds a `PowerMessage` from a raw power callback code.
 pub const fn power_message_from_raw(raw: u32) -> PowerMessage {
     PowerMessage::from_raw(raw)
 }
 
+/// Returns the number of message constants exposed by the Swift bridge.
 pub fn bridged_constant_count() -> u32 {
     unsafe { bridge::iokit_swift_io_message_constant_count() }
 }
 
+/// Returns a bridged raw message constant by index.
 pub fn bridged_constant(index: u32) -> u32 {
     unsafe { bridge::iokit_swift_io_message_constant(index) }
 }

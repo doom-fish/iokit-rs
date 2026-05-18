@@ -167,6 +167,7 @@ impl Connect {
     }
 }
 
+/// Clones the retained connection handle.
 impl Clone for Connect {
     fn clone(&self) -> Self {
         let raw = unsafe { bridge::iokit_swift_connect_retain(self.as_ptr()) };
@@ -176,6 +177,7 @@ impl Clone for Connect {
     }
 }
 
+/// Releases the retained connection handle on drop.
 impl Drop for Connect {
     fn drop(&mut self) {
         unsafe { bridge::iokit_swift_connect_release(self.as_ptr()) };

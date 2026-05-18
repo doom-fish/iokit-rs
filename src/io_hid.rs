@@ -1,3 +1,5 @@
+//! Safe wrappers around `IOHIDManager` and `IOHIDDevice`.
+
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_safety_doc,
@@ -18,22 +20,33 @@ use crate::{
 use core::{ffi::c_void, ptr};
 use std::ptr::NonNull;
 
+/// Wraps `kIOHIDManagerOptionNone`.
 pub const HID_MANAGER_OPTION_NONE: u32 = ffi_impl::kIOHIDManagerOptionNone;
+/// Wraps `kIOHIDManagerOptionUsePersistentProperties`.
 pub const HID_MANAGER_OPTION_USE_PERSISTENT_PROPERTIES: u32 =
     ffi_impl::kIOHIDManagerOptionUsePersistentProperties;
+/// Wraps `kIOHIDManagerOptionDoNotLoadProperties`.
 pub const HID_MANAGER_OPTION_DO_NOT_LOAD_PROPERTIES: u32 =
     ffi_impl::kIOHIDManagerOptionDoNotLoadProperties;
+/// Wraps `kIOHIDManagerOptionDoNotSaveProperties`.
 pub const HID_MANAGER_OPTION_DO_NOT_SAVE_PROPERTIES: u32 =
     ffi_impl::kIOHIDManagerOptionDoNotSaveProperties;
+/// Wraps `kIOHIDManagerOptionIndependentDevices`.
 pub const HID_MANAGER_OPTION_INDEPENDENT_DEVICES: u32 =
     ffi_impl::kIOHIDManagerOptionIndependentDevices;
+/// Wraps `kIOHIDDeviceGetValueWithUpdate`.
 pub const HID_DEVICE_GET_VALUE_WITH_UPDATE: u32 = ffi_impl::kIOHIDDeviceGetValueWithUpdate;
+/// Wraps `kIOHIDDeviceGetValueWithoutUpdate`.
 pub const HID_DEVICE_GET_VALUE_WITHOUT_UPDATE: u32 = ffi_impl::kIOHIDDeviceGetValueWithoutUpdate;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Typed wrapper around `IOHIDReportType` values.
 pub enum HidReportType {
+    /// Wraps `kIOHIDReportTypeInput`.
     Input,
+    /// Wraps `kIOHIDReportTypeOutput`.
     Output,
+    /// Wraps `kIOHIDReportTypeFeature`.
     Feature,
 }
 
@@ -81,6 +94,7 @@ impl Drop for OwnedCfString {
 }
 
 #[derive(Debug)]
+/// Safe retained wrapper around an `IOHIDManagerRef`.
 pub struct HidManager {
     raw: NonNull<c_void>,
 }
@@ -94,10 +108,12 @@ impl HidManager {
         self.raw.as_ptr().cast_const()
     }
 
+    /// Returns the Core Foundation type ID for `IOHIDManager`.
     pub fn type_id() -> ffi_impl::CFTypeID {
         unsafe { ffi_impl::IOHIDManagerGetTypeID() }
     }
 
+    /// Wraps `IOHIDManagerCreate`.
     pub fn create(options: u32) -> Result<Self> {
         Self::from_retained_raw(unsafe {
             ffi_impl::IOHIDManagerCreate(ffi_impl::kCFAllocatorDefault, options)
@@ -105,6 +121,7 @@ impl HidManager {
         .ok_or(crate::IoKitError::UnexpectedNull("IOHIDManagerCreate"))
     }
 
+    /// Wraps `IOHIDManagerOpen`.
     pub fn open(&self, options: u32) -> Result<()> {
         io_result(
             unsafe { ffi_impl::IOHIDManagerOpen(self.as_raw(), options) },
@@ -112,6 +129,7 @@ impl HidManager {
         )
     }
 
+    /// Wraps `IOHIDManagerClose`.
     pub fn close(&self, options: u32) -> Result<()> {
         io_result(
             unsafe { ffi_impl::IOHIDManagerClose(self.as_raw(), options) },
@@ -119,6 +137,7 @@ impl HidManager {
         )
     }
 
+    /// Copies a manager property by Core Foundation key.
     pub fn property(&self, key: &str) -> Result<Option<CFValue>> {
         let key = OwnedCfString::new(key)?;
         let value = unsafe { ffi_impl::IOHIDManagerGetProperty(self.as_raw(), key.as_raw()) };
@@ -131,11 +150,13 @@ impl HidManager {
         }
     }
 
+    /// Wraps `IOHIDManagerSetProperty`.
     pub unsafe fn set_property_raw(&self, key: &str, value: ffi_impl::CFTypeRef) -> Result<bool> {
         let key = OwnedCfString::new(key)?;
         Ok(unsafe { ffi_impl::IOHIDManagerSetProperty(self.as_raw(), key.as_raw(), value) != 0 })
     }
 
+    /// Wraps `IOHIDManagerScheduleWithRunLoop`.
     pub unsafe fn schedule_with_run_loop_raw(
         &self,
         run_loop: ffi_impl::CFRunLoopRef,
@@ -146,6 +167,7 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerUnscheduleFromRunLoop`.
     pub unsafe fn unschedule_from_run_loop_raw(
         &self,
         run_loop: ffi_impl::CFRunLoopRef,
@@ -156,30 +178,37 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerSetDispatchQueue`.
     pub unsafe fn set_dispatch_queue_raw(&self, queue: ffi_impl::dispatch_queue_t) {
         unsafe { ffi_impl::IOHIDManagerSetDispatchQueue(self.as_raw(), queue) };
     }
 
+    /// Wraps `IOHIDManagerSetCancelHandler`.
     pub unsafe fn set_cancel_handler_raw(&self, handler: ffi_impl::dispatch_block_t) {
         unsafe { ffi_impl::IOHIDManagerSetCancelHandler(self.as_raw(), handler) };
     }
 
+    /// Wraps `IOHIDManagerActivate`.
     pub fn activate(&self) {
         unsafe { ffi_impl::IOHIDManagerActivate(self.as_raw()) };
     }
 
+    /// Wraps `IOHIDManagerCancel`.
     pub fn cancel(&self) {
         unsafe { ffi_impl::IOHIDManagerCancel(self.as_raw()) };
     }
 
+    /// Wraps `IOHIDManagerSetDeviceMatching`.
     pub unsafe fn set_device_matching_raw(&self, matching: ffi_impl::CFDictionaryRef) {
         unsafe { ffi_impl::IOHIDManagerSetDeviceMatching(self.as_raw(), matching) };
     }
 
+    /// Wraps `IOHIDManagerSetDeviceMatchingMultiple`.
     pub unsafe fn set_device_matching_multiple_raw(&self, multiple: ffi_impl::CFArrayRef) {
         unsafe { ffi_impl::IOHIDManagerSetDeviceMatchingMultiple(self.as_raw(), multiple) };
     }
 
+    /// Returns the current device set as retained `HidDevice` wrappers.
     pub fn devices(&self) -> Vec<HidDevice> {
         let device_set = unsafe { ffi_impl::IOHIDManagerCopyDevices(self.as_raw()) };
         if device_set.is_null() {
@@ -204,6 +233,7 @@ impl HidManager {
         devices
     }
 
+    /// Wraps `IOHIDManagerRegisterDeviceMatchingCallback`.
     pub unsafe fn register_device_matching_callback(
         &self,
         callback: Option<ffi_impl::IOHIDDeviceCallback>,
@@ -214,6 +244,7 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerRegisterDeviceRemovalCallback`.
     pub unsafe fn register_device_removal_callback(
         &self,
         callback: Option<ffi_impl::IOHIDDeviceCallback>,
@@ -224,6 +255,7 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerRegisterInputReportCallback`.
     pub unsafe fn register_input_report_callback(
         &self,
         callback: Option<ffi_impl::IOHIDReportCallback>,
@@ -234,6 +266,7 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerRegisterInputReportWithTimeStampCallback`.
     pub unsafe fn register_input_report_with_timestamp_callback(
         &self,
         callback: Option<ffi_impl::IOHIDReportWithTimeStampCallback>,
@@ -248,6 +281,7 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerRegisterInputValueCallback`.
     pub unsafe fn register_input_value_callback(
         &self,
         callback: Option<ffi_impl::IOHIDValueCallback>,
@@ -258,14 +292,17 @@ impl HidManager {
         };
     }
 
+    /// Wraps `IOHIDManagerSetInputValueMatching`.
     pub unsafe fn set_input_value_matching_raw(&self, matching: ffi_impl::CFDictionaryRef) {
         unsafe { ffi_impl::IOHIDManagerSetInputValueMatching(self.as_raw(), matching) };
     }
 
+    /// Wraps `IOHIDManagerSetInputValueMatchingMultiple`.
     pub unsafe fn set_input_value_matching_multiple_raw(&self, multiple: ffi_impl::CFArrayRef) {
         unsafe { ffi_impl::IOHIDManagerSetInputValueMatchingMultiple(self.as_raw(), multiple) };
     }
 
+    /// Wraps `IOHIDManagerSaveToPropertyDomain`.
     pub fn save_to_property_domain(
         &self,
         application_id: &str,
@@ -289,6 +326,7 @@ impl HidManager {
     }
 }
 
+/// Clones the retained HID manager handle.
 impl Clone for HidManager {
     fn clone(&self) -> Self {
         let raw = unsafe { ffi_impl::CFRetain(self.as_raw().cast()) };
@@ -296,6 +334,7 @@ impl Clone for HidManager {
     }
 }
 
+/// Releases the retained HID manager handle on drop.
 impl Drop for HidManager {
     fn drop(&mut self) {
         unsafe { ffi_impl::CFRelease(self.as_raw().cast()) };
@@ -303,6 +342,7 @@ impl Drop for HidManager {
 }
 
 #[derive(Debug)]
+/// Safe retained wrapper around an `IOHIDDeviceRef`.
 pub struct HidDevice {
     raw: NonNull<c_void>,
 }
@@ -316,14 +356,17 @@ impl HidDevice {
         self.raw.as_ptr().cast_const()
     }
 
+    /// Returns the Core Foundation type ID for `IOHIDDevice`.
     pub fn type_id() -> ffi_impl::CFTypeID {
         unsafe { ffi_impl::IOHIDDeviceGetTypeID() }
     }
 
+    /// Creates a HID device wrapper for a matched `Service`.
     pub fn create(service: &Service) -> Result<Self> {
         Self::create_from_service(unsafe { bridge::iokit_swift_service_raw(service.as_ptr()) })
     }
 
+    /// Wraps `IOHIDDeviceCreate` for a raw `io_service_t`.
     pub fn create_from_service(service: ffi_impl::io_service_t) -> Result<Self> {
         Self::from_retained_raw(unsafe {
             ffi_impl::IOHIDDeviceCreate(ffi_impl::kCFAllocatorDefault, service)
@@ -331,6 +374,7 @@ impl HidDevice {
         .ok_or(crate::IoKitError::UnexpectedNull("IOHIDDeviceCreate"))
     }
 
+    /// Returns the backing `Service` for this HID device.
     pub fn service(&self) -> Option<Service> {
         let service = unsafe { ffi_impl::IOHIDDeviceGetService(self.as_raw()) };
         if service == 0 {
@@ -342,6 +386,7 @@ impl HidDevice {
         Service::from_raw(unsafe { bridge::iokit_swift_wrap_service(service) })
     }
 
+    /// Wraps `IOHIDDeviceOpen`.
     pub fn open(&self, options: u32) -> Result<()> {
         io_result(
             unsafe { ffi_impl::IOHIDDeviceOpen(self.as_raw(), options) },
@@ -349,6 +394,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceClose`.
     pub fn close(&self, options: u32) -> Result<()> {
         io_result(
             unsafe { ffi_impl::IOHIDDeviceClose(self.as_raw(), options) },
@@ -356,10 +402,12 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceConformsTo`.
     pub fn conforms_to(&self, usage_page: u32, usage: u32) -> bool {
         unsafe { ffi_impl::IOHIDDeviceConformsTo(self.as_raw(), usage_page, usage) != 0 }
     }
 
+    /// Copies a device property by Core Foundation key.
     pub fn property(&self, key: &str) -> Result<Option<CFValue>> {
         let key = OwnedCfString::new(key)?;
         let value = unsafe { ffi_impl::IOHIDDeviceGetProperty(self.as_raw(), key.as_raw()) };
@@ -372,6 +420,7 @@ impl HidDevice {
         }
     }
 
+    /// Wraps `IOHIDDeviceSetProperty`.
     pub unsafe fn set_property_raw(
         &self,
         key: &str,
@@ -381,6 +430,7 @@ impl HidDevice {
         Ok(unsafe { ffi_impl::IOHIDDeviceSetProperty(self.as_raw(), key.as_raw(), property) != 0 })
     }
 
+    /// Wraps `IOHIDDeviceCopyMatchingElements`.
     pub unsafe fn matching_elements_raw(
         &self,
         matching: ffi_impl::CFDictionaryRef,
@@ -393,10 +443,12 @@ impl HidDevice {
         }
     }
 
+    /// Returns all matching elements for this device.
     pub fn all_matching_elements(&self) -> Option<CFValue> {
         unsafe { self.matching_elements_raw(ptr::null(), 0) }
     }
 
+    /// Wraps `IOHIDDeviceScheduleWithRunLoop`.
     pub unsafe fn schedule_with_run_loop_raw(
         &self,
         run_loop: ffi_impl::CFRunLoopRef,
@@ -405,6 +457,7 @@ impl HidDevice {
         unsafe { ffi_impl::IOHIDDeviceScheduleWithRunLoop(self.as_raw(), run_loop, run_loop_mode) };
     }
 
+    /// Wraps `IOHIDDeviceUnscheduleFromRunLoop`.
     pub unsafe fn unschedule_from_run_loop_raw(
         &self,
         run_loop: ffi_impl::CFRunLoopRef,
@@ -415,22 +468,27 @@ impl HidDevice {
         };
     }
 
+    /// Wraps `IOHIDDeviceSetDispatchQueue`.
     pub unsafe fn set_dispatch_queue_raw(&self, queue: ffi_impl::dispatch_queue_t) {
         unsafe { ffi_impl::IOHIDDeviceSetDispatchQueue(self.as_raw(), queue) };
     }
 
+    /// Wraps `IOHIDDeviceSetCancelHandler`.
     pub unsafe fn set_cancel_handler_raw(&self, handler: ffi_impl::dispatch_block_t) {
         unsafe { ffi_impl::IOHIDDeviceSetCancelHandler(self.as_raw(), handler) };
     }
 
+    /// Wraps `IOHIDDeviceActivate`.
     pub fn activate(&self) {
         unsafe { ffi_impl::IOHIDDeviceActivate(self.as_raw()) };
     }
 
+    /// Wraps `IOHIDDeviceCancel`.
     pub fn cancel(&self) {
         unsafe { ffi_impl::IOHIDDeviceCancel(self.as_raw()) };
     }
 
+    /// Wraps `IOHIDDeviceRegisterRemovalCallback`.
     pub unsafe fn register_removal_callback(
         &self,
         callback: Option<ffi_impl::IOHIDCallback>,
@@ -439,6 +497,7 @@ impl HidDevice {
         unsafe { ffi_impl::IOHIDDeviceRegisterRemovalCallback(self.as_raw(), callback, context) };
     }
 
+    /// Wraps `IOHIDDeviceRegisterInputValueCallback`.
     pub unsafe fn register_input_value_callback(
         &self,
         callback: Option<ffi_impl::IOHIDValueCallback>,
@@ -449,6 +508,7 @@ impl HidDevice {
         };
     }
 
+    /// Wraps `IOHIDDeviceRegisterInputReportCallback`.
     pub unsafe fn register_input_report_callback(
         &self,
         report: *mut u8,
@@ -467,6 +527,7 @@ impl HidDevice {
         };
     }
 
+    /// Wraps `IOHIDDeviceRegisterInputReportWithTimeStampCallback`.
     pub unsafe fn register_input_report_with_timestamp_callback(
         &self,
         report: *mut u8,
@@ -485,14 +546,17 @@ impl HidDevice {
         };
     }
 
+    /// Wraps `IOHIDDeviceSetInputValueMatching`.
     pub unsafe fn set_input_value_matching_raw(&self, matching: ffi_impl::CFDictionaryRef) {
         unsafe { ffi_impl::IOHIDDeviceSetInputValueMatching(self.as_raw(), matching) };
     }
 
+    /// Wraps `IOHIDDeviceSetInputValueMatchingMultiple`.
     pub unsafe fn set_input_value_matching_multiple_raw(&self, multiple: ffi_impl::CFArrayRef) {
         unsafe { ffi_impl::IOHIDDeviceSetInputValueMatchingMultiple(self.as_raw(), multiple) };
     }
 
+    /// Wraps `IOHIDDeviceSetValue`.
     pub unsafe fn set_value_raw(
         &self,
         element: ffi_impl::IOHIDElementRef,
@@ -504,6 +568,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceSetValueMultiple`.
     pub unsafe fn set_value_multiple_raw(&self, multiple: ffi_impl::CFDictionaryRef) -> Result<()> {
         io_result(
             unsafe { ffi_impl::IOHIDDeviceSetValueMultiple(self.as_raw(), multiple) },
@@ -511,6 +576,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceSetValueWithCallback`.
     pub unsafe fn set_value_with_callback_raw(
         &self,
         element: ffi_impl::IOHIDElementRef,
@@ -534,6 +600,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceSetValueMultipleWithCallback`.
     pub unsafe fn set_value_multiple_with_callback_raw(
         &self,
         multiple: ffi_impl::CFDictionaryRef,
@@ -555,6 +622,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceGetValue`.
     pub unsafe fn get_value_raw(
         &self,
         element: ffi_impl::IOHIDElementRef,
@@ -566,6 +634,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceGetValueWithOptions`.
     pub unsafe fn get_value_with_options_raw(
         &self,
         element: ffi_impl::IOHIDElementRef,
@@ -580,6 +649,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceCopyValueMultiple`.
     pub unsafe fn copy_value_multiple_raw(
         &self,
         elements: ffi_impl::CFArrayRef,
@@ -593,6 +663,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceGetValueWithCallback`.
     pub unsafe fn get_value_with_callback_raw(
         &self,
         element: ffi_impl::IOHIDElementRef,
@@ -616,6 +687,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceCopyValueMultipleWithCallback`.
     pub unsafe fn copy_value_multiple_with_callback_raw(
         &self,
         elements: ffi_impl::CFArrayRef,
@@ -639,6 +711,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceSetReport`.
     pub fn set_report(
         &self,
         report_type: HidReportType,
@@ -667,6 +740,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceSetReportWithCallback`.
     pub unsafe fn set_report_with_callback_raw(
         &self,
         report_type: HidReportType,
@@ -694,6 +768,7 @@ impl HidDevice {
         )
     }
 
+    /// Wraps `IOHIDDeviceGetReport`.
     pub fn get_report(
         &self,
         report_type: HidReportType,
@@ -724,6 +799,7 @@ impl HidDevice {
     }
 }
 
+/// Clones the retained HID device handle.
 impl Clone for HidDevice {
     fn clone(&self) -> Self {
         let raw = unsafe { ffi_impl::CFRetain(self.as_raw().cast()) };
@@ -731,6 +807,7 @@ impl Clone for HidDevice {
     }
 }
 
+/// Releases the retained HID device handle on drop.
 impl Drop for HidDevice {
     fn drop(&mut self) {
         unsafe { ffi_impl::CFRelease(self.as_raw().cast()) };

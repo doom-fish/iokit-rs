@@ -1,3 +1,5 @@
+//! Safe wrappers around `IOIteratorNext` and related iterator helpers.
+
 #![allow(
     clippy::missing_errors_doc,
     clippy::module_name_repetitions,
@@ -14,6 +16,7 @@ use core::ffi::c_void;
 use std::ptr::NonNull;
 
 #[derive(Debug)]
+/// Safe retained wrapper around an `io_iterator_t` handle.
 pub struct ObjectIterator {
     raw: NonNull<c_void>,
 }
@@ -27,14 +30,17 @@ impl ObjectIterator {
         self.raw.as_ptr()
     }
 
+    /// Wraps `IOIteratorIsValid`.
     pub fn is_valid(&self) -> bool {
         unsafe { bridge::iokit_swift_iterator_is_valid(self.as_ptr()) }
     }
 
+    /// Wraps `IOIteratorReset`.
     pub fn reset(&mut self) {
         unsafe { bridge::iokit_swift_iterator_reset(self.as_ptr()) };
     }
 
+    /// Wraps `IORegistryIteratorEnterEntry`.
     pub fn enter_entry(&mut self) -> crate::Result<()> {
         io_result(
             unsafe { bridge::iokit_swift_iterator_enter_entry(self.as_ptr()) },
@@ -42,6 +48,7 @@ impl ObjectIterator {
         )
     }
 
+    /// Wraps `IORegistryIteratorExitEntry`.
     pub fn exit_entry(&mut self) -> crate::Result<()> {
         io_result(
             unsafe { bridge::iokit_swift_iterator_exit_entry(self.as_ptr()) },
@@ -49,16 +56,19 @@ impl ObjectIterator {
         )
     }
 
+    /// Returns the next service in the iterator.
     pub fn next_service(&mut self) -> Option<Service> {
         Service::from_raw(unsafe { bridge::iokit_swift_iterator_next_service(self.as_ptr()) })
     }
 
+    /// Returns the next registry entry in the iterator.
     pub fn next_registry_entry(&mut self) -> Option<RegistryEntry> {
         RegistryEntry::from_raw(unsafe {
             bridge::iokit_swift_iterator_next_registry_entry(self.as_ptr())
         })
     }
 
+    /// Consumes the iterator into a `Vec<Service>`.
     pub fn collect_services(mut self) -> Vec<Service> {
         let mut services = Vec::new();
         while let Some(service) = self.next_service() {
@@ -67,6 +77,7 @@ impl ObjectIterator {
         services
     }
 
+    /// Consumes the iterator into a `Vec<RegistryEntry>`.
     pub fn collect_registry_entries(mut self) -> Vec<RegistryEntry> {
         let mut entries = Vec::new();
         while let Some(entry) = self.next_registry_entry() {
@@ -76,6 +87,7 @@ impl ObjectIterator {
     }
 }
 
+/// Clones the retained iterator handle.
 impl Clone for ObjectIterator {
     fn clone(&self) -> Self {
         let raw = unsafe { bridge::iokit_swift_iterator_retain(self.as_ptr()) };
@@ -85,6 +97,7 @@ impl Clone for ObjectIterator {
     }
 }
 
+/// Releases the retained iterator handle on drop.
 impl Drop for ObjectIterator {
     fn drop(&mut self) {
         unsafe { bridge::iokit_swift_iterator_release(self.as_ptr()) };

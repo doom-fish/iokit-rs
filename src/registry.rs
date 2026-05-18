@@ -1,3 +1,5 @@
+//! Registry re-exports built on `crate::io_registry` and `crate::io_service`.
+
 pub use crate::io_iterator::ObjectIterator;
 pub use crate::io_registry::{
     RegistryEntry, REGISTRY_ITERATE_PARENTS, REGISTRY_ITERATE_RECURSIVELY,
