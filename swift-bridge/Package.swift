@@ -15,7 +15,6 @@ let package = Package(
     targets: [
         .target(
             name: "IOKitBridge",
-            path: "Sources/IOKitBridge",
-            publicHeadersPath: "include")
+            path: "Sources/IOKitBridge")
     ]
 )
