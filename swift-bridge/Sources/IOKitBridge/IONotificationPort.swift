@@ -40,7 +40,7 @@ public func iokit_swift_notification_port_run_loop_source(_ port: UnsafeMutableR
           let source = IONotificationPortGetRunLoopSource(port.raw) else {
         return nil
     }
-    return UnsafeMutableRawPointer(Unmanaged.passUnretained(source as AnyObject).toOpaque())
+    return source.toOpaque()
 }
 
 @_cdecl("iokit_swift_notification_port_set_importance_receiver")
