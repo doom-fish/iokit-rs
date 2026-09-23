@@ -51,6 +51,9 @@ pub struct Service {
     raw: NonNull<c_void>,
 }
 
+unsafe impl Send for Service {}
+unsafe impl Sync for Service {}
+
 impl Service {
     pub(crate) fn from_raw(raw: *mut c_void) -> Option<Self> {
         NonNull::new(raw).map(|raw| Self { raw })

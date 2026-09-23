@@ -31,6 +31,9 @@ pub struct RegistryEntry {
     raw: NonNull<c_void>,
 }
 
+unsafe impl Send for RegistryEntry {}
+unsafe impl Sync for RegistryEntry {}
+
 impl RegistryEntry {
     pub(crate) fn from_raw(raw: *mut c_void) -> Option<Self> {
         NonNull::new(raw).map(|raw| Self { raw })

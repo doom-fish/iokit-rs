@@ -296,17 +296,23 @@ unsafe extern "C" {
         interest_type: *const c_char,
         on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
         ctx: *mut c_void,
+        retain_ctx: unsafe extern "C" fn(*mut c_void),
+        release_ctx: unsafe extern "C" fn(*mut c_void),
     ) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_service_interest_unsubscribe` entry point.
     pub fn iokit_swift_service_interest_unsubscribe(handle: *mut c_void);
 
-    /// Subscribe to service-match/terminate notifications for `class_name`.
+    /// Subscribe to service-match/terminate notifications for a matching
+    /// dictionary, which the bridge consumes.
     /// kind=0 → matched, kind=1 → terminated.  Payload is a retained
     /// `IOObjectHolder`\* (opaque pointer wrapping an `io_service_t`).
     pub fn iokit_swift_service_match_subscribe(
-        class_name: *const c_char,
+        matching: *const c_void,
+        deliver_existing: bool,
         on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
         ctx: *mut c_void,
+        retain_ctx: unsafe extern "C" fn(*mut c_void),
+        release_ctx: unsafe extern "C" fn(*mut c_void),
     ) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_service_match_unsubscribe` entry point.
     pub fn iokit_swift_service_match_unsubscribe(handle: *mut c_void);
@@ -317,6 +323,8 @@ unsafe extern "C" {
     pub fn iokit_swift_power_source_subscribe(
         on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
         ctx: *mut c_void,
+        retain_ctx: unsafe extern "C" fn(*mut c_void),
+        release_ctx: unsafe extern "C" fn(*mut c_void),
     ) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_power_source_unsubscribe` entry point.
     pub fn iokit_swift_power_source_unsubscribe(handle: *mut c_void);
@@ -328,6 +336,8 @@ unsafe extern "C" {
     pub fn iokit_swift_system_power_subscribe(
         on_event: unsafe extern "C" fn(i32, *const c_void, *mut c_void),
         ctx: *mut c_void,
+        retain_ctx: unsafe extern "C" fn(*mut c_void),
+        release_ctx: unsafe extern "C" fn(*mut c_void),
     ) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_system_power_unsubscribe` entry point.
     pub fn iokit_swift_system_power_unsubscribe(handle: *mut c_void);

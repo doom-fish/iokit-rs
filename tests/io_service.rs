@@ -122,3 +122,19 @@ fn matching_dictionaries_find_services() -> iokit::Result<()> {
         .is_none());
     Ok(())
 }
+
+#[test]
+fn services_and_registry_entries_are_send_and_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<iokit::Service>();
+    assert_send_sync::<iokit::RegistryEntry>();
+
+    let service = matching_service("IOResources")
+        .expect("matching_service")
+        .expect("IOResources");
+    let class_name = std::thread::spawn(move || service.class_name())
+        .join()
+        .expect("thread")
+        .expect("class name");
+    assert_eq!(class_name, "IOResources");
+}

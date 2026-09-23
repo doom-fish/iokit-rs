@@ -24,7 +24,7 @@
 //!
 //! All types in this module are gated behind the **`async`** Cargo feature:
 //! ```toml
-//! iokit = { version = "0.3", features = ["async"] }
+//! iokit = { version = "0.6", features = ["async"] }
 //! ```
 //!
 //! # Back-pressure / drop semantics
@@ -35,14 +35,16 @@
 //!
 //! # Drop / unsubscribe
 //!
-//! Dropping the `*Stream` struct calls the Swift `_unsubscribe` function, which
+//! Dropping the `*Stream` struct deactivates its callback context and then
+//! calls the Swift `_unsubscribe` function, which
 //!
 //! 1. Stops the IOKit notification mechanism (IOObjectRelease / CFRunLoopRemoveSource).
-//! 2. Drains any in-flight callbacks so they cannot touch the freed sender.
-//! 3. Releases the Swift bridge object.
+//! 2. Drains any in-flight callbacks on the bridge's private serial queue.
+//! 3. Releases the Swift bridge object, which releases its reference to the
+//!    callback context.
 //!
-//! Immediately after `unsubscribe` returns, Rust drops the boxed sender,
-//! which closes the stream for the consumer.
+//! The sender inside the context is dropped, closing the stream for the
+//! consumer, once both the bridge and the Rust handle have released it.
 //!
 //! # Example
 //!
@@ -73,13 +75,73 @@
     clippy::ptr_cast_constness
 )]
 
-use doom_fish_utils::panic_safe::catch_user_panic;
+use doom_fish_utils::callback_context::CallbackContext;
 use doom_fish_utils::stream::{AsyncStreamSender, BoundedAsyncStream, NextItem};
 use std::ffi::c_void;
 
 use crate::{
-    bridge, error::Result, io_message::IoMessage, io_service::Service, object::c_string, IoKitError,
+    bridge,
+    cf::dictionary_to_cf,
+    error::Result,
+    io_message::IoMessage,
+    io_service::{MatchingDictionary, Service},
+    object::c_string,
+    IoKitError,
 };
+
+type StreamContext<T> = CallbackContext<AsyncStreamSender<T>>;
+type ContextHook = unsafe extern "C" fn(*mut c_void);
+
+struct StreamHandle<T: Send + 'static> {
+    bridge_ptr: *mut c_void,
+    unsubscribe: unsafe extern "C" fn(*mut c_void),
+    context: StreamContext<T>,
+}
+
+unsafe impl<T: Send + 'static> Send for StreamHandle<T> {}
+unsafe impl<T: Send + 'static> Sync for StreamHandle<T> {}
+
+impl<T: Send + 'static> Drop for StreamHandle<T> {
+    fn drop(&mut self) {
+        self.context.deactivate();
+        unsafe { (self.unsubscribe)(self.bridge_ptr) };
+    }
+}
+
+fn subscribe_stream<T: Send + 'static>(
+    capacity: usize,
+    what: &'static str,
+    unsubscribe: unsafe extern "C" fn(*mut c_void),
+    subscribe: impl FnOnce(*mut c_void, ContextHook, ContextHook) -> *mut c_void,
+) -> Result<(BoundedAsyncStream<T>, StreamHandle<T>)> {
+    if capacity == 0 {
+        return Err(IoKitError::InvalidArgument(
+            "stream capacity must be at least 1".to_string(),
+        ));
+    }
+    let (stream, sender) = BoundedAsyncStream::new(capacity);
+    let context = StreamContext::new(sender);
+    let bridge_ptr = subscribe(
+        context.as_ptr(),
+        StreamContext::<T>::RETAIN,
+        StreamContext::<T>::RELEASE,
+    );
+    if bridge_ptr.is_null() {
+        return Err(IoKitError::UnexpectedNull(what));
+    }
+    Ok((
+        stream,
+        StreamHandle {
+            bridge_ptr,
+            unsubscribe,
+            context,
+        },
+    ))
+}
+
+unsafe fn push_event<T: Send + 'static>(ctx: *mut c_void, site: &str, event: T) {
+    unsafe { StreamContext::<T>::with(ctx, site, move |sender| sender.push(event)) };
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // 1. ServiceInterestStream
@@ -95,46 +157,21 @@ pub struct ServiceInterestEvent {
     pub message_argument: usize,
 }
 
-struct ServiceInterestHandle {
-    bridge_ptr: *mut c_void,
-    sender_ptr: *mut AsyncStreamSender<ServiceInterestEvent>,
-}
-unsafe impl Send for ServiceInterestHandle {}
-unsafe impl Sync for ServiceInterestHandle {}
-
-impl Drop for ServiceInterestHandle {
-    fn drop(&mut self) {
-        unsafe {
-            // 1. Stop callbacks and drain in-flight work.
-            bridge::iokit_swift_service_interest_unsubscribe(self.bridge_ptr);
-            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
-            // is dropped exactly once here, after unsubscribe() has guaranteed no
-            // further callbacks can reference it.
-            drop(Box::from_raw(self.sender_ptr));
-        }
-    }
-}
-
 /// Async stream of [`ServiceInterestEvent`]s for a specific IOKit service.
 ///
 /// Created via [`ServiceInterestStream::subscribe`].  Dropping this value
 /// deregisters the notification and closes the stream.
 pub struct ServiceInterestStream {
     inner: BoundedAsyncStream<ServiceInterestEvent>,
-    _handle: ServiceInterestHandle,
+    _handle: StreamHandle<ServiceInterestEvent>,
 }
 
 unsafe extern "C" fn service_interest_cb(kind: i32, payload: *const c_void, ctx: *mut c_void) {
-    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
-    // callback lifetime — unsubscribe() drains the dispatch queue before
-    // dropping the sender box.
-    let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<ServiceInterestEvent>>()) };
-    catch_user_panic("service_interest_cb", || {
-        sender.push(ServiceInterestEvent {
-            message: IoMessage::from_raw(kind as u32),
-            message_argument: payload as usize,
-        });
-    });
+    let event = ServiceInterestEvent {
+        message: IoMessage::from_raw(kind as u32),
+        message_argument: payload as usize,
+    };
+    unsafe { push_event(ctx, "service_interest_cb", event) };
 }
 
 impl ServiceInterestStream {
@@ -148,30 +185,24 @@ impl ServiceInterestStream {
     /// Returns an error if the Swift bridge fails to register the notification.
     pub fn subscribe(service: &Service, interest: &str, capacity: usize) -> Result<Self> {
         let c_interest = c_string(interest)?;
-        let (stream, sender) = BoundedAsyncStream::new(capacity);
-        let sender_ptr = Box::into_raw(Box::new(sender));
-        let bridge_ptr = unsafe {
-            bridge::iokit_swift_service_interest_subscribe(
-                service.as_ptr(),
-                c_interest.as_ptr(),
-                service_interest_cb,
-                sender_ptr.cast(),
-            )
-        };
-        if bridge_ptr.is_null() {
-            unsafe {
-                drop(Box::from_raw(sender_ptr));
-            }
-            return Err(IoKitError::UnexpectedNull(
-                "iokit_swift_service_interest_subscribe",
-            ));
-        }
-        Ok(Self {
-            inner: stream,
-            _handle: ServiceInterestHandle {
-                bridge_ptr,
-                sender_ptr,
+        let (inner, handle) = subscribe_stream(
+            capacity,
+            "iokit_swift_service_interest_subscribe",
+            bridge::iokit_swift_service_interest_unsubscribe,
+            |ctx, retain, release| unsafe {
+                bridge::iokit_swift_service_interest_subscribe(
+                    service.as_ptr(),
+                    c_interest.as_ptr(),
+                    service_interest_cb,
+                    ctx,
+                    retain,
+                    release,
+                )
             },
+        )?;
+        Ok(Self {
+            inner,
+            _handle: handle,
         })
     }
 
@@ -205,6 +236,13 @@ pub enum ServiceMatchKind {
     Terminated,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum ExistingServices {
+    #[default]
+    Skip,
+    Deliver,
+}
+
 /// An IOKit service-match event produced by [`ServiceMatchStream`].
 ///
 /// The optional `service` field is a retained reference to the service object.
@@ -217,13 +255,6 @@ pub struct ServiceMatchEvent {
     pub service: Option<Service>,
 }
 
-// Safety: IOKit service objects use ARC-backed retain/release which is
-// thread-safe; IOKit registry operations are also thread-safe.
-/// `ServiceMatchEvent` can move across threads because it only carries retained handles.
-unsafe impl Send for ServiceMatchEvent {}
-/// `ServiceMatchEvent` can be shared across threads because it only carries retained handles.
-unsafe impl Sync for ServiceMatchEvent {}
-
 /// Formats `ServiceMatchEvent` for debugging without forcing a service snapshot.
 impl std::fmt::Debug for ServiceMatchEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -234,60 +265,32 @@ impl std::fmt::Debug for ServiceMatchEvent {
     }
 }
 
-struct ServiceMatchHandle {
-    bridge_ptr: *mut c_void,
-    sender_ptr: *mut AsyncStreamSender<ServiceMatchEvent>,
-}
-unsafe impl Send for ServiceMatchHandle {}
-unsafe impl Sync for ServiceMatchHandle {}
-
-impl Drop for ServiceMatchHandle {
-    fn drop(&mut self) {
-        unsafe {
-            bridge::iokit_swift_service_match_unsubscribe(self.bridge_ptr);
-            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
-            // is dropped exactly once here, after unsubscribe() has guaranteed no
-            // further callbacks can reference it.
-            drop(Box::from_raw(self.sender_ptr));
-        }
-    }
-}
-
-/// Async stream of [`ServiceMatchEvent`]s for services matching a class name.
+/// Async stream of [`ServiceMatchEvent`]s for services matching a class name
+/// or a [`MatchingDictionary`].
 ///
-/// Created via [`ServiceMatchStream::subscribe`].  Dropping this value
+/// Created via [`ServiceMatchStream::subscribe`] or
+/// [`ServiceMatchStream::subscribe_matching`].  Dropping this value
 /// deregisters both the match and terminate notifications.
 ///
-/// Note: the initial set of already-matching services is **not** delivered as
-/// events.  Call [`crate::matching_services`] to obtain the current set.
+/// Note: [`ServiceMatchStream::subscribe`] does **not** deliver the initial set
+/// of already-matching services as events; pass [`ExistingServices::Deliver`]
+/// to [`ServiceMatchStream::subscribe_matching`] to receive them as `Matched`
+/// events first, or call [`crate::matching_services`] to obtain the current set.
 pub struct ServiceMatchStream {
     inner: BoundedAsyncStream<ServiceMatchEvent>,
-    _handle: ServiceMatchHandle,
+    _handle: StreamHandle<ServiceMatchEvent>,
 }
 
 unsafe extern "C" fn service_match_cb(kind: i32, payload: *const c_void, ctx: *mut c_void) {
-    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
-    // callback lifetime — unsubscribe() drains the dispatch queue before
-    // dropping the sender box.
-    let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<ServiceMatchEvent>>()) };
-    let service = if payload.is_null() {
-        None
-    } else {
-        // payload is a retained IOObjectHolder*; Service::from_raw takes ownership.
-        #[allow(clippy::cast_ptr_alignment)]
-        Service::from_raw(payload as *mut c_void)
+    let event = ServiceMatchEvent {
+        kind: if kind == 0 {
+            ServiceMatchKind::Matched
+        } else {
+            ServiceMatchKind::Terminated
+        },
+        service: Service::from_raw(payload.cast_mut()),
     };
-    let event_kind = if kind == 0 {
-        ServiceMatchKind::Matched
-    } else {
-        ServiceMatchKind::Terminated
-    };
-    catch_user_panic("service_match_cb", || {
-        sender.push(ServiceMatchEvent {
-            kind: event_kind,
-            service,
-        });
-    });
+    unsafe { push_event(ctx, "service_match_cb", event) };
 }
 
 impl ServiceMatchStream {
@@ -299,30 +302,37 @@ impl ServiceMatchStream {
     ///
     /// Returns an error if the Swift bridge fails to register the notifications.
     pub fn subscribe(class_name: &str, capacity: usize) -> Result<Self> {
-        let c_name = c_string(class_name)?;
-        let (stream, sender) = BoundedAsyncStream::new(capacity);
-        let sender_ptr = Box::into_raw(Box::new(sender));
-        let bridge_ptr = unsafe {
-            bridge::iokit_swift_service_match_subscribe(
-                c_name.as_ptr(),
-                service_match_cb,
-                sender_ptr.cast(),
-            )
-        };
-        if bridge_ptr.is_null() {
-            unsafe {
-                drop(Box::from_raw(sender_ptr));
-            }
-            return Err(IoKitError::UnexpectedNull(
-                "iokit_swift_service_match_subscribe",
-            ));
-        }
-        Ok(Self {
-            inner: stream,
-            _handle: ServiceMatchHandle {
-                bridge_ptr,
-                sender_ptr,
+        Self::subscribe_matching(
+            &MatchingDictionary::class(class_name),
+            ExistingServices::Skip,
+            capacity,
+        )
+    }
+
+    pub fn subscribe_matching(
+        matching: &MatchingDictionary,
+        existing: ExistingServices,
+        capacity: usize,
+    ) -> Result<Self> {
+        let dictionary = dictionary_to_cf(&matching.entries)?;
+        let (inner, handle) = subscribe_stream(
+            capacity,
+            "iokit_swift_service_match_subscribe",
+            bridge::iokit_swift_service_match_unsubscribe,
+            move |ctx, retain, release| unsafe {
+                bridge::iokit_swift_service_match_subscribe(
+                    dictionary.into_raw(),
+                    existing == ExistingServices::Deliver,
+                    service_match_cb,
+                    ctx,
+                    retain,
+                    release,
+                )
             },
+        )?;
+        Ok(Self {
+            inner,
+            _handle: handle,
         })
     }
 
@@ -353,25 +363,6 @@ impl ServiceMatchStream {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PowerSourceEvent;
 
-struct PowerSourceHandle {
-    bridge_ptr: *mut c_void,
-    sender_ptr: *mut AsyncStreamSender<PowerSourceEvent>,
-}
-unsafe impl Send for PowerSourceHandle {}
-unsafe impl Sync for PowerSourceHandle {}
-
-impl Drop for PowerSourceHandle {
-    fn drop(&mut self) {
-        unsafe {
-            bridge::iokit_swift_power_source_unsubscribe(self.bridge_ptr);
-            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
-            // is dropped exactly once here, after unsubscribe() has guaranteed no
-            // further callbacks can reference it.
-            drop(Box::from_raw(self.sender_ptr));
-        }
-    }
-}
-
 /// Async stream of [`PowerSourceEvent`]s driven by
 /// `IOPSNotificationCreateRunLoopSource`.
 ///
@@ -380,17 +371,11 @@ impl Drop for PowerSourceHandle {
 /// the actual new state.
 pub struct PowerSourceStream {
     inner: BoundedAsyncStream<PowerSourceEvent>,
-    _handle: PowerSourceHandle,
+    _handle: StreamHandle<PowerSourceEvent>,
 }
 
 unsafe extern "C" fn power_source_cb(_kind: i32, _payload: *const c_void, ctx: *mut c_void) {
-    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
-    // callback lifetime — unsubscribe() removes the run-loop source and drains
-    // the serial queue before dropping the sender box.
-    let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<PowerSourceEvent>>()) };
-    catch_user_panic("power_source_cb", || {
-        sender.push(PowerSourceEvent);
-    });
+    unsafe { push_event(ctx, "power_source_cb", PowerSourceEvent) };
 }
 
 impl PowerSourceStream {
@@ -402,25 +387,17 @@ impl PowerSourceStream {
     ///
     /// Returns an error if `IOPSNotificationCreateRunLoopSource` fails.
     pub fn subscribe(capacity: usize) -> Result<Self> {
-        let (stream, sender) = BoundedAsyncStream::new(capacity);
-        let sender_ptr = Box::into_raw(Box::new(sender));
-        let bridge_ptr = unsafe {
-            bridge::iokit_swift_power_source_subscribe(power_source_cb, sender_ptr.cast())
-        };
-        if bridge_ptr.is_null() {
-            unsafe {
-                drop(Box::from_raw(sender_ptr));
-            }
-            return Err(IoKitError::UnexpectedNull(
-                "iokit_swift_power_source_subscribe",
-            ));
-        }
-        Ok(Self {
-            inner: stream,
-            _handle: PowerSourceHandle {
-                bridge_ptr,
-                sender_ptr,
+        let (inner, handle) = subscribe_stream(
+            capacity,
+            "iokit_swift_power_source_subscribe",
+            bridge::iokit_swift_power_source_unsubscribe,
+            |ctx, retain, release| unsafe {
+                bridge::iokit_swift_power_source_subscribe(power_source_cb, ctx, retain, release)
             },
+        )?;
+        Ok(Self {
+            inner,
+            _handle: handle,
         })
     }
 
@@ -454,25 +431,6 @@ impl PowerSourceStream {
 /// delivering the event.  See [`SystemPowerStream`] for implications.
 pub type SystemPowerEvent = IoMessage;
 
-struct SystemPowerHandle {
-    bridge_ptr: *mut c_void,
-    sender_ptr: *mut AsyncStreamSender<SystemPowerEvent>,
-}
-unsafe impl Send for SystemPowerHandle {}
-unsafe impl Sync for SystemPowerHandle {}
-
-impl Drop for SystemPowerHandle {
-    fn drop(&mut self) {
-        unsafe {
-            bridge::iokit_swift_system_power_unsubscribe(self.bridge_ptr);
-            // SAFETY: sender_ptr was created via Box::into_raw in subscribe() and
-            // is dropped exactly once here, after unsubscribe() has guaranteed no
-            // further callbacks can reference it.
-            drop(Box::from_raw(self.sender_ptr));
-        }
-    }
-}
-
 /// Async stream of [`SystemPowerEvent`]s driven by `IORegisterForSystemPower`.
 ///
 /// Yields system power change messages such as:
@@ -503,17 +461,11 @@ impl Drop for SystemPowerHandle {
 /// before the kernel timeout (~30 s) expires.
 pub struct SystemPowerStream {
     inner: BoundedAsyncStream<SystemPowerEvent>,
-    _handle: SystemPowerHandle,
+    _handle: StreamHandle<SystemPowerEvent>,
 }
 
 unsafe extern "C" fn system_power_cb(kind: i32, _payload: *const c_void, ctx: *mut c_void) {
-    // SAFETY: ctx is the sender_ptr cast to *mut c_void, valid for the entire
-    // callback lifetime — unsubscribe() removes the run-loop source and drains
-    // the serial queue before dropping the sender box.
-    let sender = unsafe { &*(ctx.cast::<AsyncStreamSender<SystemPowerEvent>>()) };
-    catch_user_panic("system_power_cb", || {
-        sender.push(IoMessage::from_raw(kind as u32));
-    });
+    unsafe { push_event(ctx, "system_power_cb", IoMessage::from_raw(kind as u32)) };
 }
 
 impl SystemPowerStream {
@@ -525,25 +477,17 @@ impl SystemPowerStream {
     ///
     /// Returns an error if `IORegisterForSystemPower` fails.
     pub fn subscribe(capacity: usize) -> Result<Self> {
-        let (stream, sender) = BoundedAsyncStream::new(capacity);
-        let sender_ptr = Box::into_raw(Box::new(sender));
-        let bridge_ptr = unsafe {
-            bridge::iokit_swift_system_power_subscribe(system_power_cb, sender_ptr.cast())
-        };
-        if bridge_ptr.is_null() {
-            unsafe {
-                drop(Box::from_raw(sender_ptr));
-            }
-            return Err(IoKitError::UnexpectedNull(
-                "iokit_swift_system_power_subscribe",
-            ));
-        }
-        Ok(Self {
-            inner: stream,
-            _handle: SystemPowerHandle {
-                bridge_ptr,
-                sender_ptr,
+        let (inner, handle) = subscribe_stream(
+            capacity,
+            "iokit_swift_system_power_subscribe",
+            bridge::iokit_swift_system_power_unsubscribe,
+            |ctx, retain, release| unsafe {
+                bridge::iokit_swift_system_power_subscribe(system_power_cb, ctx, retain, release)
             },
+        )?;
+        Ok(Self {
+            inner,
+            _handle: handle,
         })
     }
 

@@ -8,9 +8,10 @@
 #![cfg(feature = "async")]
 
 use iokit::async_api::{
-    PowerSourceStream, ServiceInterestStream, ServiceMatchStream, SystemPowerStream,
+    ExistingServices, PowerSourceStream, ServiceInterestStream, ServiceMatchEvent,
+    ServiceMatchKind, ServiceMatchStream, SystemPowerStream,
 };
-use iokit::{matching_service, GENERAL_INTEREST};
+use iokit::{matching_service, MatchingDictionary, GENERAL_INTEREST};
 
 // ─── PowerSourceStream ────────────────────────────────────────────────────
 
@@ -116,4 +117,113 @@ fn power_source_buffered_count_starts_empty() {
     let stream = PowerSourceStream::subscribe(4).expect("subscribe");
     // No events have been produced yet; buffer must be empty.
     assert_eq!(stream.buffered_count(), 0);
+}
+
+#[test]
+fn zero_capacity_is_rejected_instead_of_panicking() {
+    assert!(PowerSourceStream::subscribe(0).is_err());
+    assert!(SystemPowerStream::subscribe(0).is_err());
+    assert!(ServiceMatchStream::subscribe("IOResources", 0).is_err());
+    let service = matching_service("IOResources")
+        .expect("matching_service")
+        .expect("IOResources");
+    assert!(ServiceInterestStream::subscribe(&service, GENERAL_INTEREST, 0).is_err());
+}
+
+#[test]
+fn service_match_skips_existing_services_by_default() {
+    let stream = ServiceMatchStream::subscribe("IOResources", 8).expect("subscribe");
+    assert_eq!(stream.buffered_count(), 0);
+    assert!(stream.try_next().is_none());
+}
+
+#[test]
+fn service_match_can_deliver_existing_services() {
+    let stream = ServiceMatchStream::subscribe_matching(
+        &MatchingDictionary::class("IOResources"),
+        ExistingServices::Deliver,
+        8,
+    )
+    .expect("subscribe");
+    let event = stream
+        .try_next()
+        .expect("the existing IOResources service is delivered");
+    assert_eq!(event.kind, ServiceMatchKind::Matched);
+    let service = event.service.expect("matched service");
+    assert_eq!(service.class_name().expect("class name"), "IOResources");
+    assert!(stream.try_next().is_none());
+}
+
+#[test]
+fn service_match_events_move_across_threads() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<ServiceMatchEvent>();
+    assert_send_sync::<ServiceMatchStream>();
+    assert_send_sync::<ServiceInterestStream>();
+
+    let stream = ServiceMatchStream::subscribe_matching(
+        &MatchingDictionary::name("IOResources"),
+        ExistingServices::Deliver,
+        4,
+    )
+    .expect("subscribe");
+    let event = stream.try_next().expect("existing service");
+    let class_name = std::thread::spawn(move || {
+        event
+            .service
+            .expect("matched service")
+            .class_name()
+            .expect("class name")
+    })
+    .join()
+    .expect("thread");
+    assert_eq!(class_name, "IOResources");
+}
+
+#[test]
+fn streams_subscribe_and_drop_concurrently_on_other_threads() {
+    let service = matching_service("IOPMrootDomain")
+        .expect("matching_service")
+        .expect("IOPMrootDomain");
+    let (tx, rx) = std::sync::mpsc::channel::<Box<dyn Send>>();
+    let dropper = std::thread::spawn(move || {
+        let mut dropped = 0_usize;
+        for stream in rx {
+            drop(stream);
+            dropped += 1;
+        }
+        dropped
+    });
+    std::thread::scope(|scope| {
+        for worker in 0..4 {
+            let tx = tx.clone();
+            let service = service.clone();
+            scope.spawn(move || {
+                for round in 0..25 {
+                    let matched = ServiceMatchStream::subscribe_matching(
+                        &MatchingDictionary::class(if round % 5 == 0 {
+                            "IOService"
+                        } else {
+                            "IOResources"
+                        }),
+                        ExistingServices::Deliver,
+                        16,
+                    )
+                    .expect("match subscribe");
+                    assert!(matched.buffered_count() >= 1);
+                    let interest = ServiceInterestStream::subscribe(&service, GENERAL_INTEREST, 4)
+                        .expect("interest subscribe");
+                    if (worker + round) % 2 == 0 {
+                        tx.send(Box::new(matched)).expect("send");
+                        drop(interest);
+                    } else {
+                        drop(matched);
+                        tx.send(Box::new(interest)).expect("send");
+                    }
+                }
+            });
+        }
+    });
+    drop(tx);
+    assert_eq!(dropper.join().expect("dropper"), 100);
 }
