@@ -1,5 +1,46 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.6.0] - Unreleased
+
+### Fixed
+
+- Use-after-free in `ServiceInterestStream` and `ServiceMatchStream`: their notification ports delivered on the concurrent global queue while unsubscribe drained only the bridge's private queue, so a callback already running could use the released bridge and the port destroyed by its `deinit`. Each port now delivers on the bridge's own serial queue; unsubscribe clears the bridge, releases the notifiers and destroys the port on that queue, drains it with `queue.sync {}`, and only then releases the bridge.
+- All four streams pass a doom-fish-utils `CallbackContext` to the bridge, which retains it at registration and releases it in `deinit`; dropping a stream deactivates the context first, so no callback can reach a freed sender. Teardown reached from the delivery queue itself defers instead of deadlocking.
+- `ServiceMatchStream` registered its notifications and drained the initial iterators on the caller's thread while callbacks could already run on another.
+- A stream capacity of 0 panicked; it is now an `InvalidArgument` error.
+- `NotificationPort::run_loop_source_raw` returned the address of a freed temporary Swift box instead of the port's `CFRunLoopSourceRef`.
+- `main_port` and `main_port_from_bootstrap` linked `IOMainPort` (macOS 12) strongly, so binaries using them did not load on macOS 10.15 and 11; the symbol is now weakly linked with an `IOMasterPort` fallback.
+- Floating-point `CFNumber`s were read as `Integer` (2.0) or `Unknown` (1.5), and unsigned values above `i64::MAX` came back negative.
+- `Connect::call_scalar_method` and `call_method` sent a scalar count of 0 when the input slice length overflowed `u32`; they return `InvalidArgument`.
+- The raw `CFNumberGetValue` declaration took the number type as `i32`; the SDK's `CFNumberType` is a `CFIndex`. A test now pins it and the raw `IOServiceAddInterestNotification` signature (6 parameters, as in the SDK).
+- The README described 0.3.1 and claimed every stream drained callbacks before freeing its state; the coverage audits now state that they measure a self-selected sample in which 72 VERIFIED rows are raw FFI only.
+
+### Changed
+
+- **Breaking:** `ObjectIterator` no longer implements `Clone`; a clone shared the kernel cursor with the original. Use `reset()` to iterate again.
+- **Breaking:** `CFValue` reads floating-point numbers as `CFValue::Float` and unsigned values above `i64::MAX` as `CFValue::UnsignedInteger`.
+- **Breaking:** raw `iokit::ffi::CFNumberGetValue` takes a `CFIndex` number type, and `kCFNumberSInt64Type` is a `CFIndex`.
+- **Breaking:** zero-capacity stream subscriptions return `InvalidArgument`, and `ServiceMatchStream::subscribe` no longer rejects class names containing NUL (they match nothing).
+- `Service` and `RegistryEntry` are `Send + Sync`, so `ServiceMatchEvent` is `Send + Sync` without its former `unsafe impl` over a non-`Send` `Service`.
+- `rust-version` is 1.82; `apple-cf` is required at `>=0.11, <0.12` and `doom-fish-utils` at `>=0.4.1, <0.5`.
+
+### Added
+
+- `MatchingDictionary`: the class, name, BSD-name and registry-entry-ID dictionaries IOKit's helpers build, arbitrary matching keys, `IOPropertyMatch` entries, and USB (`usb_device`) and HID (`hid_device`) vendor/product matching, with `first_service`, `services_iterator` and `services`. The key names are exported as `PROVIDER_CLASS_KEY`, `NAME_MATCH_KEY`, `PROPERTY_MATCH_KEY`, `BSD_NAME_KEY` and `REGISTRY_ENTRY_ID_KEY`.
+- `Service::set_property` and `RegistryEntry::set_property` (`IORegistryEntrySetCFProperty`).
+- `ServiceMatchStream::subscribe_matching` with `ExistingServices::Deliver`, which delivers the services that already match as `Matched` events.
+- `CFValue::Float`, `CFValue::UnsignedInteger`, and `From` conversions into `CFValue` for strings, booleans, integers, floats and byte vectors.
+
+### Removed
+
+- `impl Clone for ObjectIterator` and the Swift export it used.
+- The empty `include/IOKitBridge.h` bridge header (it declared nothing).
+
 ## [0.5.3] - 2026-05-20
 
 - Widen `doom-fish-utils` dependency bound to `<0.4` so the 0.3.x SPSC-ring release resolves cleanly. No source changes.
