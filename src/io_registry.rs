@@ -8,7 +8,7 @@
 
 use crate::{
     bridge,
-    cf::take_value,
+    cf::{take_value, OwnedCf},
     error::Result,
     ffi_impl,
     io_iterator::ObjectIterator,
@@ -119,6 +119,21 @@ impl RegistryEntry {
                 bridge::iokit_swift_registry_entry_property(self.as_ptr(), key.as_ptr()).cast(),
             )
         })
+    }
+
+    pub fn set_property(&self, key: &str, value: &CFValue) -> Result<()> {
+        let key = OwnedCf::string(key)?;
+        let value = value.to_cf()?;
+        io_result(
+            unsafe {
+                ffi_impl::IORegistryEntrySetCFProperty(
+                    bridge::iokit_swift_service_raw(self.as_ptr()),
+                    key.as_ptr().cast(),
+                    value.as_ptr(),
+                )
+            },
+            "IORegistryEntrySetCFProperty",
+        )
     }
 
     /// Wraps `IORegistryEntrySearchCFProperty`.

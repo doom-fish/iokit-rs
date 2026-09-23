@@ -8,15 +8,18 @@
 
 use crate::{
     bridge,
+    cf::{dictionary_to_cf, OwnedCf},
     error::Result,
     ffi_impl,
     io_connect::Connect,
     io_iterator::ObjectIterator,
+    io_kit::MAIN_PORT_DEFAULT,
     io_registry::RegistryEntry,
     object::{c_string, io_result, nonnull, take_required_c_string},
+    CFValue,
 };
 use core::ffi::c_void;
-use std::ptr::NonNull;
+use std::{collections::BTreeMap, ptr::NonNull};
 
 /// Wraps `K_IO_SERVICE_PLANE`.
 pub const SERVICE_PLANE: &str = ffi_impl::K_IO_SERVICE_PLANE;
@@ -36,6 +39,11 @@ pub const GENERAL_INTEREST: &str = ffi_impl::K_IOGeneralInterest;
 pub const BUSY_INTEREST: &str = ffi_impl::K_IOBusyInterest;
 /// Wraps `kIOServiceInteractionAllowed`.
 pub const SERVICE_INTERACTION_ALLOWED: u32 = ffi_impl::kIOServiceInteractionAllowed;
+pub const PROVIDER_CLASS_KEY: &str = "IOProviderClass";
+pub const NAME_MATCH_KEY: &str = "IONameMatch";
+pub const PROPERTY_MATCH_KEY: &str = "IOPropertyMatch";
+pub const BSD_NAME_KEY: &str = "BSD Name";
+pub const REGISTRY_ENTRY_ID_KEY: &str = "IORegistryEntryID";
 
 #[derive(Debug)]
 /// Safe retained wrapper around an `io_service_t` handle.
@@ -150,6 +158,21 @@ impl Service {
                 bridge::iokit_swift_registry_entry_property(self.as_ptr(), key.as_ptr()).cast(),
             )
         })
+    }
+
+    pub fn set_property(&self, key: &str, value: &CFValue) -> Result<()> {
+        let key = OwnedCf::string(key)?;
+        let value = value.to_cf()?;
+        io_result(
+            unsafe {
+                ffi_impl::IORegistryEntrySetCFProperty(
+                    bridge::iokit_swift_service_raw(self.as_ptr()),
+                    key.as_ptr().cast(),
+                    value.as_ptr(),
+                )
+            },
+            "IORegistryEntrySetCFProperty",
+        )
     }
 
     /// Copies the full registry property dictionary for this service.
@@ -361,4 +384,107 @@ pub fn matching_services(class_name: &str) -> Result<Vec<Service>> {
 pub fn name_matching_services(service_name: &str) -> Result<Vec<Service>> {
     Ok(name_matching_services_iterator(service_name)?
         .map_or_else(Vec::new, ObjectIterator::collect_services))
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MatchingDictionary {
+    pub(crate) entries: BTreeMap<String, CFValue>,
+}
+
+impl MatchingDictionary {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn class(class_name: &str) -> Self {
+        Self::new().with_matching_key(PROVIDER_CLASS_KEY, class_name)
+    }
+
+    pub fn name(service_name: &str) -> Self {
+        Self::new().with_matching_key(NAME_MATCH_KEY, service_name)
+    }
+
+    pub fn bsd_name(bsd_name: &str) -> Self {
+        Self::new().with_matching_key(BSD_NAME_KEY, bsd_name)
+    }
+
+    pub fn registry_entry_id(entry_id: u64) -> Self {
+        Self::new().with_matching_key(REGISTRY_ENTRY_ID_KEY, entry_id)
+    }
+
+    pub fn usb_device(vendor_id: u16, product_id: u16) -> Self {
+        Self::class("IOUSBHostDevice")
+            .with_matching_key("idVendor", u32::from(vendor_id))
+            .with_matching_key("idProduct", u32::from(product_id))
+    }
+
+    pub fn hid_device(vendor_id: u32, product_id: u32) -> Self {
+        Self::class("IOHIDDevice")
+            .with_property_match("VendorID", vendor_id)
+            .with_property_match("ProductID", product_id)
+    }
+
+    #[must_use]
+    pub fn with_matching_key(mut self, key: &str, value: impl Into<CFValue>) -> Self {
+        self.entries.insert(key.to_owned(), value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_property_match(mut self, key: &str, value: impl Into<CFValue>) -> Self {
+        let properties = self
+            .entries
+            .entry(PROPERTY_MATCH_KEY.to_owned())
+            .or_insert_with(|| CFValue::Dictionary(BTreeMap::new()));
+        if !matches!(properties, CFValue::Dictionary(_)) {
+            *properties = CFValue::Dictionary(BTreeMap::new());
+        }
+        if let CFValue::Dictionary(properties) = properties {
+            properties.insert(key.to_owned(), value.into());
+        }
+        self
+    }
+
+    pub fn to_value(&self) -> CFValue {
+        CFValue::Dictionary(self.entries.clone())
+    }
+
+    pub(crate) fn to_retained_cf(&self) -> Result<ffi_impl::CFDictionaryRef> {
+        Ok(dictionary_to_cf(&self.entries)?.into_raw().cast())
+    }
+
+    pub fn first_service(&self) -> Result<Option<Service>> {
+        let matching = self.to_retained_cf()?;
+        let raw = unsafe { ffi_impl::IOServiceGetMatchingService(MAIN_PORT_DEFAULT, matching) };
+        if raw == 0 {
+            return Ok(None);
+        }
+        Ok(Service::from_raw(unsafe {
+            bridge::iokit_swift_wrap_service(raw)
+        }))
+    }
+
+    pub fn services_iterator(&self) -> Result<Option<ObjectIterator>> {
+        let matching = self.to_retained_cf()?;
+        let mut iterator = 0_u32;
+        io_result(
+            unsafe {
+                ffi_impl::IOServiceGetMatchingServices(
+                    MAIN_PORT_DEFAULT,
+                    matching,
+                    &raw mut iterator,
+                )
+            },
+            "IOServiceGetMatchingServices",
+        )?;
+        Ok(ObjectIterator::from_raw(unsafe {
+            bridge::iokit_swift_wrap_iterator(iterator)
+        }))
+    }
+
+    pub fn services(&self) -> Result<Vec<Service>> {
+        Ok(self
+            .services_iterator()?
+            .map_or_else(Vec::new, ObjectIterator::collect_services))
+    }
 }
