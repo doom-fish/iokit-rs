@@ -111,3 +111,33 @@ fn exposes_low_level_raw_gap_surface() {
         _set_notification_port,
     );
 }
+
+unsafe extern "C" fn dummy_interest(
+    _refcon: *mut c_void,
+    _service: ffi::io_service_t,
+    _message_type: u32,
+    _message_argument: *mut c_void,
+) {
+}
+
+#[test]
+fn notification_and_number_declarations_match_the_sdk() {
+    let add_interest = ffi::IOServiceAddInterestNotification
+        as unsafe extern "C" fn(
+            ffi::IONotificationPortRef,
+            ffi::io_service_t,
+            *const c_char,
+            Option<ffi::IOServiceInterestCallback>,
+            *mut c_void,
+            *mut ffi::io_object_t,
+        ) -> ffi::kern_return_t;
+    let number_get_value = ffi::CFNumberGetValue
+        as unsafe extern "C" fn(ffi::CFNumberRef, ffi::CFIndex, *mut c_void) -> bool;
+    let interest = dummy_interest as ffi::IOServiceInterestCallback;
+    assert_eq!(ffi::kCFNumberSInt64Type, 4);
+    assert_eq!(
+        core::mem::size_of_val(&ffi::kCFNumberSInt64Type),
+        core::mem::size_of::<ffi::CFIndex>()
+    );
+    let _ = (add_interest, number_get_value, interest);
+}

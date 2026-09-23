@@ -140,7 +140,7 @@ pub type IOPowerSourceCallbackType = unsafe extern "C" fn(context: *mut c_void);
 
 pub const kIOReturnSuccess: IOReturn = 0;
 pub const kCFStringEncodingUTF8: u32 = 0x0800_0100;
-pub const kCFNumberSInt64Type: i32 = 4;
+pub const kCFNumberSInt64Type: CFIndex = 4;
 pub const IO_NAME_SIZE: usize = 128;
 pub const kIORegistryIterateRecursively: u32 = 0x0000_0001;
 pub const kIORegistryIterateParents: u32 = 0x0000_0002;
@@ -330,7 +330,11 @@ unsafe extern "C" {
     ) -> bool;
 
     pub fn CFNumberGetTypeID() -> CFTypeID;
-    pub fn CFNumberGetValue(number: CFNumberRef, number_type: i32, value_ptr: *mut c_void) -> bool;
+    pub fn CFNumberGetValue(
+        number: CFNumberRef,
+        number_type: CFIndex,
+        value_ptr: *mut c_void,
+    ) -> bool;
 
     pub fn CFBooleanGetTypeID() -> CFTypeID;
     pub fn CFBooleanGetValue(boolean: CFBooleanRef) -> bool;
