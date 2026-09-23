@@ -10,6 +10,7 @@ use crate::{
     io_notification_port::NotificationPort,
     io_service::Service,
     object::{io_result, nonnull},
+    IoKitError,
 };
 use core::{ffi::c_void, ptr};
 use std::ptr::NonNull;
@@ -78,6 +79,7 @@ impl Connect {
         input: &[u64],
         output_capacity: u32,
     ) -> Result<Vec<u64>> {
+        let input_count = scalar_count(input.len())?;
         let mut output = vec![0_u64; usize::try_from(output_capacity).unwrap_or_default()];
         let mut output_count = output_capacity;
         io_result(
@@ -86,7 +88,7 @@ impl Connect {
                     self.as_ptr(),
                     selector,
                     input.as_ptr(),
-                    u32::try_from(input.len()).unwrap_or_default(),
+                    input_count,
                     output.as_mut_ptr(),
                     &raw mut output_count,
                 )
@@ -136,6 +138,7 @@ impl Connect {
         output_scalar_capacity: u32,
         output_structure_capacity: usize,
     ) -> Result<ConnectCallOutput> {
+        let input_scalar_count = scalar_count(input_scalars.len())?;
         let mut scalars = vec![0_u64; usize::try_from(output_scalar_capacity).unwrap_or_default()];
         let mut scalar_count = output_scalar_capacity;
         let mut structure = vec![0_u8; output_structure_capacity];
@@ -146,7 +149,7 @@ impl Connect {
                     self.as_ptr(),
                     selector,
                     input_scalars.as_ptr(),
-                    u32::try_from(input_scalars.len()).unwrap_or_default(),
+                    input_scalar_count,
                     if input_structure.is_empty() {
                         ptr::null()
                     } else {
@@ -167,6 +170,14 @@ impl Connect {
     }
 }
 
+fn scalar_count(len: usize) -> Result<u32> {
+    u32::try_from(len).map_err(|_| {
+        IoKitError::InvalidArgument(format!(
+            "{len} scalar inputs exceed the u32 count IOKit accepts"
+        ))
+    })
+}
+
 /// Clones the retained connection handle.
 impl Clone for Connect {
     fn clone(&self) -> Self {
@@ -181,5 +192,22 @@ impl Clone for Connect {
 impl Drop for Connect {
     fn drop(&mut self) {
         unsafe { bridge::iokit_swift_connect_release(self.as_ptr()) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scalar_count;
+    use crate::IoKitError;
+
+    #[test]
+    fn scalar_counts_beyond_u32_are_errors_not_zero() {
+        assert_eq!(scalar_count(0).expect("zero"), 0);
+        assert_eq!(scalar_count(16).expect("sixteen"), 16);
+        let too_many = usize::try_from(u64::from(u32::MAX) + 1).expect("64-bit usize");
+        assert!(matches!(
+            scalar_count(too_many),
+            Err(IoKitError::InvalidArgument(_))
+        ));
     }
 }
