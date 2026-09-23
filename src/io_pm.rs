@@ -306,7 +306,7 @@ pub fn get_aggressiveness(connect: &Connect, aggressiveness_type: u64) -> Result
             bridge::iokit_swift_power_get_aggressiveness(
                 connect.as_ptr(),
                 aggressiveness_type,
-                &mut value,
+                &raw mut value,
             )
         },
         "IOPMGetAggressiveness",
@@ -332,7 +332,7 @@ pub fn set_aggressiveness(connect: &Connect, aggressiveness_type: u64, value: u6
 pub fn thermal_warning_level() -> Result<ThermalWarningLevel> {
     let mut level = 0_u32;
     io_result(
-        unsafe { bridge::iokit_swift_power_get_thermal_warning_level(&mut level) },
+        unsafe { bridge::iokit_swift_power_get_thermal_warning_level(&raw mut level) },
         "IOPMGetThermalWarningLevel",
     )?;
     Ok(ThermalWarningLevel::from_raw(level))

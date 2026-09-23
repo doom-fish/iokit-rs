@@ -74,7 +74,7 @@ pub fn main_port() -> Result<u32> {
 pub fn main_port_from_bootstrap(bootstrap_port: u32) -> Result<u32> {
     let mut main_port = 0_u32;
     io_result(
-        unsafe { ffi_impl::IOMainPort(bootstrap_port, &mut main_port) },
+        unsafe { ffi_impl::IOMainPort(bootstrap_port, &raw mut main_port) },
         "IOMainPort",
     )?;
     Ok(main_port)
@@ -84,7 +84,7 @@ pub fn main_port_from_bootstrap(bootstrap_port: u32) -> Result<u32> {
 pub fn kit_busy_state(main_port: u32) -> Result<u32> {
     let mut busy_state = 0_u32;
     io_result(
-        unsafe { ffi_impl::IOKitGetBusyState(main_port, &mut busy_state) },
+        unsafe { ffi_impl::IOKitGetBusyState(main_port, &raw mut busy_state) },
         "IOKitGetBusyState",
     )?;
     Ok(busy_state)
@@ -133,7 +133,12 @@ pub fn registry_iterator_for_port(
     let mut iterator = 0_u32;
     io_result(
         unsafe {
-            ffi_impl::IORegistryCreateIterator(main_port, plane.as_ptr(), options, &mut iterator)
+            ffi_impl::IORegistryCreateIterator(
+                main_port,
+                plane.as_ptr(),
+                options,
+                &raw mut iterator,
+            )
         },
         "IORegistryCreateIterator",
     )?;
@@ -179,7 +184,7 @@ pub fn bsd_name_matching_services_iterator_for_port(
 
     let mut iterator = 0_u32;
     io_result(
-        unsafe { ffi_impl::IOServiceGetMatchingServices(main_port, matching, &mut iterator) },
+        unsafe { ffi_impl::IOServiceGetMatchingServices(main_port, matching, &raw mut iterator) },
         "IOServiceGetMatchingServices",
     )?;
     Ok(wrap_iterator(iterator))
@@ -195,7 +200,7 @@ pub fn bsd_name_matching_services(bsd_name: &str) -> Result<Vec<Service>> {
 pub fn create_receive_port(msg_type: u32) -> Result<u32> {
     let mut recv_port = 0_u32;
     io_result(
-        unsafe { ffi_impl::IOCreateReceivePort(msg_type, &mut recv_port) },
+        unsafe { ffi_impl::IOCreateReceivePort(msg_type, &raw mut recv_port) },
         "IOCreateReceivePort",
     )?;
     Ok(recv_port)

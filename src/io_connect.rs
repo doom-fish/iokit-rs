@@ -88,7 +88,7 @@ impl Connect {
                     input.as_ptr(),
                     u32::try_from(input.len()).unwrap_or_default(),
                     output.as_mut_ptr(),
-                    &mut output_count,
+                    &raw mut output_count,
                 )
             },
             "IOConnectCallScalarMethod",
@@ -118,7 +118,7 @@ impl Connect {
                     },
                     input.len(),
                     output.as_mut_ptr().cast(),
-                    &mut output_len,
+                    &raw mut output_len,
                 )
             },
             "IOConnectCallStructMethod",
@@ -154,9 +154,9 @@ impl Connect {
                     },
                     input_structure.len(),
                     scalars.as_mut_ptr(),
-                    &mut scalar_count,
+                    &raw mut scalar_count,
                     structure.as_mut_ptr().cast(),
-                    &mut structure_len,
+                    &raw mut structure_len,
                 )
             },
             "IOConnectCallMethod",

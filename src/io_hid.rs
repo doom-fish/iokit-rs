@@ -790,7 +790,7 @@ impl HidDevice {
                     report_type.as_raw(),
                     report_id,
                     report.as_mut_ptr(),
-                    &mut report_length,
+                    &raw mut report_length,
                 )
             },
             "IOHIDDeviceGetReport",

@@ -108,7 +108,7 @@ impl Service {
     pub fn busy_state(&self) -> Result<u32> {
         let mut busy_state = 0_u32;
         io_result(
-            unsafe { bridge::iokit_swift_service_busy_state(self.as_ptr(), &mut busy_state) },
+            unsafe { bridge::iokit_swift_service_busy_state(self.as_ptr(), &raw mut busy_state) },
             "IOServiceGetBusyState",
         )?;
         Ok(busy_state)
@@ -134,7 +134,7 @@ impl Service {
     pub fn open(&self, ty: u32) -> Result<Connect> {
         let mut raw = core::ptr::null_mut();
         io_result(
-            unsafe { bridge::iokit_swift_service_open(self.as_ptr(), ty, &mut raw) },
+            unsafe { bridge::iokit_swift_service_open(self.as_ptr(), ty, &raw mut raw) },
             "IOServiceOpen",
         )?;
         Connect::from_raw(raw).ok_or(crate::IoKitError::UnexpectedNull(
@@ -227,7 +227,10 @@ impl Service {
         let mut entry_id = 0_u64;
         io_result(
             unsafe {
-                bridge::iokit_swift_registry_entry_registry_entry_id(self.as_ptr(), &mut entry_id)
+                bridge::iokit_swift_registry_entry_registry_entry_id(
+                    self.as_ptr(),
+                    &raw mut entry_id,
+                )
             },
             "IORegistryEntryGetRegistryEntryID",
         )?;

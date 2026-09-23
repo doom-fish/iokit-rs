@@ -51,7 +51,7 @@ pub fn unserialize(buffer: &str) -> Result<CFValue> {
             buffer.as_ptr(),
             ffi_impl::kCFAllocatorDefault,
             0,
-            &mut error_string,
+            &raw mut error_string,
         )
     };
     if value.is_null() {
@@ -72,7 +72,7 @@ pub fn unserialize_binary(buffer: &[u8]) -> Result<CFValue> {
             buffer.len(),
             ffi_impl::kCFAllocatorDefault,
             0,
-            &mut error_string,
+            &raw mut error_string,
         )
     };
     if value.is_null() {
@@ -93,7 +93,7 @@ pub fn unserialize_with_size(buffer: &[u8]) -> Result<CFValue> {
             buffer.len(),
             ffi_impl::kCFAllocatorDefault,
             0,
-            &mut error_string,
+            &raw mut error_string,
         )
     };
     if value.is_null() {

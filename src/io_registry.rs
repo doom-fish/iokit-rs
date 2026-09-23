@@ -96,7 +96,10 @@ impl RegistryEntry {
         let mut entry_id = 0_u64;
         io_result(
             unsafe {
-                bridge::iokit_swift_registry_entry_registry_entry_id(self.as_ptr(), &mut entry_id)
+                bridge::iokit_swift_registry_entry_registry_entry_id(
+                    self.as_ptr(),
+                    &raw mut entry_id,
+                )
             },
             "IORegistryEntryGetRegistryEntryID",
         )?;
