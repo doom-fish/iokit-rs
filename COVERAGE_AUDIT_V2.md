@@ -1,5 +1,7 @@
 # iokit coverage audit v2 (vs MacOSX26.2.sdk)
 
+> **What these numbers measure (checked for 0.6.0):** a self-selected sample of 300 symbols from IOKit's public user-space headers, generated against MacOSX26.2.sdk and not re-run against SDK 26.5 or 27.0. "100%" does not mean IOKit is wrapped: 72 VERIFIED rows are only raw `iokit::ffi` declarations (unsafe, no safe wrapper), and constants count the same as functions. Not in the safe API: notification-port scheduling (`IONotificationPortSetDispatchQueue`, the run-loop source is exposed only as a raw pointer) and notifications on caller-owned ports (the `async_api` streams own and drain their ports instead), `IORegistryEntrySetCFProperties`, asynchronous `IOConnectCall*` methods, memory mapping, `IODataQueue`, `IOCFPlugIn`, and CoreHID. `io_hid` overlaps the separate iohidmanager crate.
+
 SDK_PUBLIC_SYMBOLS: 300
 VERIFIED: 286
 GAPS: 0
@@ -36,8 +38,8 @@ Audit methodology: sampled 300 representative public user-space symbols across c
 | `IOServiceGetMatchingService` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetMatchingService`; `iokit::matching_service` |
 | `IOServiceGetMatchingServices` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetMatchingServices`; `iokit::matching_services_iterator`; `iokit::matching_services` |
 | `IOServiceAddNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddNotification` |
-| `IOServiceAddMatchingNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddMatchingNotification` |
-| `IOServiceAddInterestNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddInterestNotification` |
+| `IOServiceAddMatchingNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddMatchingNotification`; `iokit::async_api::ServiceMatchStream` (`async` feature) |
+| `IOServiceAddInterestNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddInterestNotification`; `iokit::async_api::ServiceInterestStream` (`async` feature) |
 | `IOServiceMatchPropertyTable` | function | `IOKitLib.h` | `iokit::ffi::IOServiceMatchPropertyTable` |
 | `IOServiceGetBusyState` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetBusyState`; `iokit::Service::busy_state` |
 | `IOServiceWaitQuiet` | function | `IOKitLib.h` | `iokit::ffi::IOServiceWaitQuiet`; `iokit::Service::wait_quiet` |
@@ -76,15 +78,15 @@ Audit methodology: sampled 300 representative public user-space symbols across c
 | `IORegistryEntrySearchCFProperty` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntrySearchCFProperty`; `iokit::RegistryEntry::search_property` |
 | `IORegistryEntryGetProperty` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryGetProperty` |
 | `IORegistryEntrySetCFProperties` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntrySetCFProperties` |
-| `IORegistryEntrySetCFProperty` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntrySetCFProperty` |
+| `IORegistryEntrySetCFProperty` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntrySetCFProperty`; `iokit::Service::set_property`; `iokit::RegistryEntry::set_property` |
 | `IORegistryEntryGetChildIterator` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryGetChildIterator`; `iokit::RegistryEntry::child_iterator` |
 | `IORegistryEntryGetChildEntry` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryGetChildEntry`; `iokit::RegistryEntry::child` |
 | `IORegistryEntryGetParentIterator` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryGetParentIterator`; `iokit::RegistryEntry::parent_iterator` |
 | `IORegistryEntryGetParentEntry` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryGetParentEntry`; `iokit::RegistryEntry::parent` |
 | `IORegistryEntryInPlane` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryInPlane`; `iokit::RegistryEntry::in_plane` |
-| `IOServiceMatching` | function | `IOKitLib.h` | `iokit::ffi::IOServiceMatching`; `iokit::matching_service`; `iokit::matching_services_iterator` |
-| `IOServiceNameMatching` | function | `IOKitLib.h` | `iokit::ffi::IOServiceNameMatching`; `iokit::name_matching_service`; `iokit::name_matching_services_iterator` |
-| `IORegistryEntryIDMatching` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryIDMatching`; `iokit::matching_service_entry_id` |
+| `IOServiceMatching` | function | `IOKitLib.h` | `iokit::ffi::IOServiceMatching`; `iokit::matching_service`; `iokit::matching_services_iterator`; `iokit::MatchingDictionary::class` |
+| `IOServiceNameMatching` | function | `IOKitLib.h` | `iokit::ffi::IOServiceNameMatching`; `iokit::name_matching_service`; `iokit::name_matching_services_iterator`; `iokit::MatchingDictionary::name` |
+| `IORegistryEntryIDMatching` | function | `IOKitLib.h` | `iokit::ffi::IORegistryEntryIDMatching`; `iokit::matching_service_entry_id`; `iokit::MatchingDictionary::registry_entry_id` |
 | `IOServiceOFPathToBSDName` | function | `IOKitLib.h` | `iokit::ffi::IOServiceOFPathToBSDName` |
 | `IOConnectMethodScalarIScalarO` | function | `IOKitLib.h` | `iokit::ffi::IOConnectMethodScalarIScalarO` |
 | `IOConnectMethodScalarIStructureO` | function | `IOKitLib.h` | `iokit::ffi::IOConnectMethodScalarIStructureO` |
@@ -186,7 +188,7 @@ Audit methodology: sampled 300 representative public user-space symbols across c
 | `IORegistryCreateIterator` | function | `IOKitLib.h` | `iokit::ffi::IORegistryCreateIterator`; `iokit::registry_iterator`; `iokit::registry_iterator_for_port` |
 | `IORegistryIteratorEnterEntry` | function | `IOKitLib.h` | `iokit::ffi::IORegistryIteratorEnterEntry`; `iokit::ObjectIterator::enter_entry` |
 | `IORegistryIteratorExitEntry` | function | `IOKitLib.h` | `iokit::ffi::IORegistryIteratorExitEntry`; `iokit::ObjectIterator::exit_entry` |
-| `IOBSDNameMatching` | function | `IOKitLib.h` | `iokit::ffi::IOBSDNameMatching`; `iokit::bsd_name_matching_service`; `iokit::bsd_name_matching_services` |
+| `IOBSDNameMatching` | function | `IOKitLib.h` | `iokit::ffi::IOBSDNameMatching`; `iokit::bsd_name_matching_service`; `iokit::bsd_name_matching_services`; `iokit::MatchingDictionary::bsd_name` |
 | `IOAsyncCallback0` | type | `IOKitLib.h` | `iokit::ffi::IOAsyncCallback0` |
 | `IOAsyncCallback1` | type | `IOKitLib.h` | `iokit::ffi::IOAsyncCallback1` |
 | `IOAsyncCallback2` | type | `IOKitLib.h` | `iokit::ffi::IOAsyncCallback2` |

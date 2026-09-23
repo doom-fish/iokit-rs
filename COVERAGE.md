@@ -1,22 +1,23 @@
 # Coverage
 
-This document tracks the requested logical areas for `iokit` v0.2.1.
+This document tracks the requested logical areas for `iokit` v0.6.0. Rows describe the safe wrappers; the `raw-ffi` declarations behind them are unsafe and are not counted as safe coverage here.
 
 ## Requested public SDK areas
 
 | Area | Swift bridge | Rust module | Coverage summary | Example | Test |
 | --- | --- | --- | --- | --- | --- |
 | `IOKitLib` / `IOKitServer` | `Support.swift` | `io_kit.rs` | Main-port lookup, global busy/quiet queries, root-registry traversal, BSD-name matching, receive-port creation, and `IOCatalogue*` helpers. | `examples/11_io_kit.rs` | `tests/io_kit.rs` |
-| `IOService` | `IOService.swift` | `io_service.rs` | Matching, class/bundle metadata, retain counts, busy state, quiet wait, authorize, open, and registry-style parent/child/property helpers. | `examples/02_io_service.rs` | `tests/io_service.rs` |
+| `IOService` | `IOService.swift` | `io_service.rs` | Matching by class, name, BSD name or entry ID, plus `MatchingDictionary` for arbitrary matching keys, `IOPropertyMatch` entries and USB/HID vendor-product matching; class/bundle metadata, retain counts, busy state, quiet wait, authorize, open, registry-style parent/child/property helpers, and `set_property` (`IORegistryEntrySetCFProperty`). | `examples/02_io_service.rs` | `tests/io_service.rs` |
 | `IOConnect` | `IOConnect.swift` | `io_connect.rs` | Connection retention, service lookup, notification-port hookup, add-client, scalar calls, struct calls, and combined method calls. | `examples/03_io_connect.rs` | `tests/io_connect.rs` |
-| `IORegistry` | `IORegistry.swift` | `io_registry.rs` | Path lookup, names, locations, paths, entry IDs, property snapshots, search, parent/child lookup, iterators, and plane membership. | `examples/04_io_registry.rs` | `tests/io_registry.rs` |
-| `IONotificationPort` | `IONotificationPort.swift` | `io_notification_port.rs` | Port creation/destruction, Mach-port access, run-loop source access, and importance receiver setup. | `examples/05_io_notification_port.rs` | `tests/io_notification_port.rs` |
-| `IOIterator` | `IOIterator.swift` | `io_iterator.rs` | Typed iterator retain/release, validity, reset, registry enter/exit, and next-service/next-registry-entry traversal. | `examples/06_io_iterator.rs` | `tests/io_iterator.rs` |
-| `IOHID` | `Support.swift` | `io_hid.rs` | `IOHIDManager` / `IOHIDDevice` creation, properties, enumeration, reports, and low-level callback registration hooks. | `examples/12_io_hid.rs` | `tests/io_hid.rs` |
+| `IORegistry` | `IORegistry.swift` | `io_registry.rs` | Path lookup, names, locations, paths, entry IDs, property snapshots (integers, unsigned 64-bit values, floats, strings, data, booleans, arrays, dictionaries), `set_property`, search, parent/child lookup, iterators, and plane membership. | `examples/04_io_registry.rs` | `tests/io_registry.rs` |
+| `IONotificationPort` | `IONotificationPort.swift` | `io_notification_port.rs` | Port creation/destruction, Mach-port access, the run-loop source as a raw pointer, and importance receiver setup. Scheduling a port is not wrapped safely: a scheduled port runs callouts whose function pointers and contexts come from raw registrations (or from the driver-defined reference passed to `Connect::set_notification_port`), so the safe entry point for notifications is `async_api`, whose streams own and drain their ports. | `examples/05_io_notification_port.rs` | `tests/io_notification_port.rs` |
+| `IOIterator` | `IOIterator.swift` | `io_iterator.rs` | Owned iterator handles (not `Clone`: copies would share one kernel cursor), validity, reset, registry enter/exit, and next-service/next-registry-entry traversal. | `examples/06_io_iterator.rs` | `tests/io_iterator.rs` |
+| `IOHID` | `Support.swift` | `io_hid.rs` | `IOHIDManager` / `IOHIDDevice` creation, properties, enumeration and reports; callback registration, scheduling and value APIs are `unsafe` raw-pointer wrappers. The iohidmanager crate is the fuller HID binding. | `examples/12_io_hid.rs` | `tests/io_hid.rs` |
 | `IOPMLib` | `IOPMLib.swift` | `io_pm.rs` | Power-management connection lookup, sleep-enabled state, aggressiveness get/set, thermal warning lookup, system-load advisory queries, assertion metadata constants, battery/CPU/scheduled-event snapshots, and assertion RAII wrappers. | `examples/07_iopm.rs` | `tests/iopm.rs` |
 | `IOCFSerialize` / `IOCFUnserialize` | `—` | `io_cf.rs` | CoreFoundation serialization plus text/binary unserialization helpers. | `—` | `tests/raw_ffi_surface.rs` |
 | `IOPS` | `IOPS.swift` | `iops.rs` | Power-source info snapshots, descriptions, provider type, external adapter details, time remaining, and battery warning level. | `examples/08_iops.rs` | `tests/iops.rs` |
 | `IOMessage` | `IOMessage.swift` | `io_message.rs` | Typed coverage for all 28 public `kIOMessage*` constants requested from `IOMessage.h`. | `examples/09_io_message.rs` | `tests/io_message.rs` |
+| Async notifications (`async` feature) | `AsyncStream.swift` | `async_api.rs` | `ServiceInterestStream` (`IOServiceAddInterestNotification`), `ServiceMatchStream` (`IOServiceAddMatchingNotification`, optionally delivering services that already match), `PowerSourceStream` and `SystemPowerStream`. Each bridge owns its notification port or run-loop source, delivers on a private serial queue, and drains it before releasing the Rust callback context. | `examples/13_async_stream.rs` | `tests/async_stream_tests.rs` |
 | `IOHIBackingStore` | `IOHIBackingStore.swift` | `io_hi_backing_store.rs` | Public-SDK compatibility stub only. The symbol is not declared in the public macOS IOKit headers, so the crate reports unavailability instead of binding private API. | `examples/10_iohi_backing_store.rs` | `tests/iohi_backing_store.rs` |
 
 ## Notes

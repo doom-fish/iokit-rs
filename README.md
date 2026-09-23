@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [IOKit](https://developer.apple.com/documentation/iokit) user-space APIs on macOS via a Swift bridge.
 
-> **Status:** v0.3.1 adds panic-safe guards to all four async stream FFI callbacks, strengthens `SystemPowerStream` documentation to clarify its observation-only semantics, and fixes a broken `watch_battery` doctest. v0.3.0 adds a Tier-2 `async` feature with four `BoundedAsyncStream`-based event streams (`ServiceInterestStream`, `ServiceMatchStream`, `PowerSourceStream`, `SystemPowerStream`).
+Requires macOS 10.15 or later. See [`CHANGELOG.md`](CHANGELOG.md) for what changed in each release, including the breaking changes in 0.6.
 
 ## Quick start
 
@@ -26,11 +26,11 @@ fn main() -> Result<()> {
 ## Module map
 
 - `io_kit` — main-port lookup, global busy/quiet queries, root-registry iteration, BSD-name matching, receive-port creation, and `IOCatalogue*` helpers.
-- `io_service` — service matching, class/bundle metadata, registry-style helpers, and `IOServiceOpen`.
+- `io_service` — service matching (by class, name, BSD name or entry ID, or with a `MatchingDictionary` for property and USB/HID vendor-product matching), class/bundle metadata, registry-style helpers, `set_property`, and `IOServiceOpen`.
 - `io_connect` — user-client connection handles plus scalar/struct method calls.
 - `io_registry` — registry path lookup, names, paths, properties, and traversal.
-- `io_notification_port` — notification port lifecycle plus Mach-port/run-loop access.
-- `io_iterator` — iterator reset/validation, registry enter/exit, and typed service/registry iteration.
+- `io_notification_port` — notification port lifecycle, Mach-port access, and the run-loop source as a raw pointer (scheduling a port is not wrapped safely; use `async_api`).
+- `io_iterator` — iterator reset/validation, registry enter/exit, and typed service/registry iteration (iterators are not `Clone`, since copies would share the kernel cursor).
 - `io_hid` — `IOHIDManager` / `IOHIDDevice` wrappers for enumeration, properties, reports, and low-level callback registration.
 - `io_pm` — `IOPMLib` snapshots, aggressiveness, thermal warning lookup, load advisory, and power assertions.
 - `io_cf` — `IOCFSerialize` / `IOCFUnserialize` helpers for CoreFoundation snapshots.
@@ -45,7 +45,7 @@ Enable the `async` feature to get four ready-to-use event streams:
 
 ```toml
 [dependencies]
-iokit = { version = "0.3", features = ["async"] }
+iokit = { version = "0.6", features = ["async"] }
 ```
 
 ```rust,no_run
@@ -59,9 +59,15 @@ async fn watch_battery() {
 }
 ```
 
-All streams implement `Drop`-safe cancellation: dropping the stream (or its
-`SubscriptionHandle`) synchronously drains any in-flight callbacks before
-freeing internal resources.
+Dropping a stream deactivates its callback context, stops the notification,
+and drains in-flight callbacks on the bridge's private serial queue before the
+bridge and its reference to the context are released. Streams, their events and
+`Service` handles are `Send + Sync`, so a stream can be dropped on any thread.
+
+`ServiceMatchStream::subscribe` skips services that already match;
+`ServiceMatchStream::subscribe_matching(&matching, ExistingServices::Deliver, capacity)`
+delivers them as `Matched` events first. Buffers are lossy: once `capacity`
+events are queued the oldest is dropped, and a capacity of 0 is an error.
 
 ## Examples
 
