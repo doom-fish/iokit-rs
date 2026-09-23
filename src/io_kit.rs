@@ -74,7 +74,7 @@ pub fn main_port() -> Result<u32> {
 pub fn main_port_from_bootstrap(bootstrap_port: u32) -> Result<u32> {
     let mut main_port = 0_u32;
     io_result(
-        unsafe { ffi_impl::IOMainPort(bootstrap_port, &raw mut main_port) },
+        unsafe { bridge::iokit_swift_main_port(bootstrap_port, &raw mut main_port) },
         "IOMainPort",
     )?;
     Ok(main_port)

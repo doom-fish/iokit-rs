@@ -8,6 +8,8 @@ unsafe extern "C" {
     /// Wraps the Swift bridge's `iokit_swift_free_string` entry point.
     pub fn iokit_swift_free_string(string: *mut c_char);
 
+    pub fn iokit_swift_main_port(bootstrap_port: u32, main_port: *mut u32) -> i32;
+
     /// Wraps the Swift bridge's `iokit_swift_service_matching` entry point.
     pub fn iokit_swift_service_matching(name: *const c_char) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_service_name_matching` entry point.

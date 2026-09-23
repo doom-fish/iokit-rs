@@ -180,6 +180,20 @@ func powerSourcesInfoHolder(_ raw: UnsafeMutableRawPointer?) -> PowerSourcesInfo
     anyObject(raw, as: PowerSourcesInfoHolder.self)
 }
 
+@_cdecl("iokit_swift_main_port")
+public func iokit_swift_main_port(
+    _ bootstrapPort: mach_port_t,
+    _ mainPort: UnsafeMutablePointer<mach_port_t>?
+) -> kern_return_t {
+    guard let mainPort else {
+        return kern_return_t(bitPattern: UInt32.max)
+    }
+    if #available(macOS 12.0, *) {
+        return IOMainPort(bootstrapPort, mainPort)
+    }
+    return IOMasterPort(bootstrapPort, mainPort)
+}
+
 @_cdecl("iokit_swift_wrap_service")
 public func iokit_swift_wrap_service(_ service: io_service_t) -> UnsafeMutableRawPointer? {
     guard service != 0 else {
