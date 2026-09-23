@@ -128,8 +128,6 @@ unsafe extern "C" {
 
     /// Wraps the Swift bridge's `iokit_swift_wrap_iterator` entry point.
     pub fn iokit_swift_wrap_iterator(iterator: u32) -> *mut c_void;
-    /// Wraps the Swift bridge's `iokit_swift_iterator_retain` entry point.
-    pub fn iokit_swift_iterator_retain(iterator: *mut c_void) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_iterator_release` entry point.
     pub fn iokit_swift_iterator_release(iterator: *mut c_void);
     /// Wraps the Swift bridge's `iokit_swift_iterator_is_valid` entry point.

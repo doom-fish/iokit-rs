@@ -6,12 +6,7 @@
     clippy::must_use_candidate
 )]
 
-use crate::{
-    bridge,
-    io_registry::RegistryEntry,
-    io_service::Service,
-    object::{io_result, nonnull},
-};
+use crate::{bridge, io_registry::RegistryEntry, io_service::Service, object::io_result};
 use core::ffi::c_void;
 use std::ptr::NonNull;
 
@@ -84,16 +79,6 @@ impl ObjectIterator {
             entries.push(entry);
         }
         entries
-    }
-}
-
-/// Clones the retained iterator handle.
-impl Clone for ObjectIterator {
-    fn clone(&self) -> Self {
-        let raw = unsafe { bridge::iokit_swift_iterator_retain(self.as_ptr()) };
-        Self {
-            raw: nonnull(raw, "iokit_swift_iterator_retain").expect("iterator retain"),
-        }
     }
 }
 

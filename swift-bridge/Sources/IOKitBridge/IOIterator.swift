@@ -1,14 +1,6 @@
 import Foundation
 import IOKit
 
-@_cdecl("iokit_swift_iterator_retain")
-public func iokit_swift_iterator_retain(_ iterator: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
-    guard let iterator = iteratorHolder(iterator) else {
-        return nil
-    }
-    return retainOpaque(iterator)
-}
-
 @_cdecl("iokit_swift_iterator_release")
 public func iokit_swift_iterator_release(_ iterator: UnsafeMutableRawPointer?) {
     guard let iterator else {
