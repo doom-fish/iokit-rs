@@ -111,13 +111,57 @@ final class ConnectHolder {
 
 final class NotificationPortHolder {
     let raw: IONotificationPortRef
+    private let lock = NSLock()
+    private var deliveryQueue: DispatchQueue?
 
     init(_ raw: IONotificationPortRef) {
         self.raw = raw
     }
 
+    func withLock<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+
+    func schedule(on target: DispatchQueue) -> Bool {
+        withLock {
+            guard deliveryQueue == nil else { return false }
+            let queue = DispatchQueue(label: "fish.doom.iokit.notification-port", target: target)
+            deliveryQueue = queue
+            IONotificationPortSetDispatchQueue(raw, queue)
+            return true
+        }
+    }
+
+    func releaseRegistration(
+        _ notifier: io_object_t,
+        context: UnsafeMutableRawPointer?,
+        release: @escaping @convention(c) (UnsafeMutableRawPointer?) -> Void
+    ) {
+        let queue: DispatchQueue? = withLock {
+            if deliveryQueue == nil {
+                _ = IOObjectRelease(notifier)
+            }
+            return deliveryQueue
+        }
+        guard let queue else {
+            release(context)
+            return
+        }
+        queue.async {
+            _ = IOObjectRelease(notifier)
+            release(context)
+        }
+    }
+
     deinit {
-        IONotificationPortDestroy(raw)
+        let raw = self.raw
+        guard let queue = deliveryQueue else {
+            IONotificationPortDestroy(raw)
+            return
+        }
+        queue.async { IONotificationPortDestroy(raw) }
     }
 }
 

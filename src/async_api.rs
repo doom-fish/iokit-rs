@@ -88,6 +88,7 @@ use crate::{
     object::c_string,
     IoKitError,
 };
+pub use crate::{io_notification_port::ServiceInterestEvent, io_service::ExistingServices};
 
 type StreamContext<T> = CallbackContext<AsyncStreamSender<T>>;
 type ContextHook = unsafe extern "C" fn(*mut c_void);
@@ -146,16 +147,6 @@ unsafe fn push_event<T: Send + 'static>(ctx: *mut c_void, site: &str, event: T) 
 // ────────────────────────────────────────────────────────────────────────────
 // 1. ServiceInterestStream
 // ────────────────────────────────────────────────────────────────────────────
-
-/// An IOKit service-interest event produced by [`ServiceInterestStream`].
-#[derive(Debug, Clone)]
-pub struct ServiceInterestEvent {
-    /// Decoded IOKit message type (e.g. `IoMessage::ServiceBusyStateChange`).
-    pub message: IoMessage,
-    /// Raw message-argument pointer value (may be 0 / null).
-    /// Interpretation is message-type–specific; see IOKit documentation.
-    pub message_argument: usize,
-}
 
 /// Async stream of [`ServiceInterestEvent`]s for a specific IOKit service.
 ///
@@ -234,13 +225,6 @@ pub enum ServiceMatchKind {
     Matched,
     /// A previously matched service has been terminated.
     Terminated,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum ExistingServices {
-    #[default]
-    Skip,
-    Deliver,
 }
 
 /// An IOKit service-match event produced by [`ServiceMatchStream`].

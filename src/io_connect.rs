@@ -45,7 +45,8 @@ impl Connect {
     }
 
     /// Wraps `IOConnectSetNotificationPort`.
-    pub fn set_notification_port(
+    #[allow(clippy::missing_safety_doc)]
+    pub unsafe fn set_notification_port(
         &self,
         port: &NotificationPort,
         notification_type: u32,

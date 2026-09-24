@@ -389,6 +389,13 @@ pub fn name_matching_services(service_name: &str) -> Result<Vec<Service>> {
         .map_or_else(Vec::new, ObjectIterator::collect_services))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum ExistingServices {
+    #[default]
+    Skip,
+    Deliver,
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MatchingDictionary {
     pub(crate) entries: BTreeMap<String, CFValue>,

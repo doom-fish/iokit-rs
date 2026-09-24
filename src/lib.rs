@@ -93,7 +93,9 @@ pub use io_message::{
     bridged_constant_count as io_message_bridged_constant_count, power_message_from_raw, IoMessage,
     PowerMessage,
 };
-pub use io_notification_port::NotificationPort;
+pub use io_notification_port::{
+    DispatchQoS, DispatchQueue, NotificationPort, PortNotification, ServiceInterestEvent,
+};
 pub use io_pm::{
     copy_assertions_by_process, copy_assertions_status, copy_battery_info, copy_cpu_power_status,
     copy_scheduled_power_events, copy_system_load_advisory_detailed, find_power_management,
@@ -118,10 +120,10 @@ pub use io_registry::{RegistryEntry, REGISTRY_ITERATE_PARENTS, REGISTRY_ITERATE_
 pub use io_service::{
     matching_service, matching_service_entry_id, matching_services, matching_services_iterator,
     name_matching_service, name_matching_services, name_matching_services_iterator,
-    MatchingDictionary, Service, BSD_NAME_KEY, BUSY_INTEREST, FIRST_MATCH_NOTIFICATION,
-    FIRST_PUBLISH_NOTIFICATION, GENERAL_INTEREST, MATCHED_NOTIFICATION, NAME_MATCH_KEY,
-    PROPERTY_MATCH_KEY, PROVIDER_CLASS_KEY, PUBLISH_NOTIFICATION, REGISTRY_ENTRY_ID_KEY,
-    SERVICE_INTERACTION_ALLOWED, SERVICE_PLANE, TERMINATED_NOTIFICATION,
+    ExistingServices, MatchingDictionary, Service, BSD_NAME_KEY, BUSY_INTEREST,
+    FIRST_MATCH_NOTIFICATION, FIRST_PUBLISH_NOTIFICATION, GENERAL_INTEREST, MATCHED_NOTIFICATION,
+    NAME_MATCH_KEY, PROPERTY_MATCH_KEY, PROVIDER_CLASS_KEY, PUBLISH_NOTIFICATION,
+    REGISTRY_ENTRY_ID_KEY, SERVICE_INTERACTION_ALLOWED, SERVICE_PLANE, TERMINATED_NOTIFICATION,
 };
 pub use iops::{
     battery_warning_level, copy_external_power_adapter_details, time_remaining_estimate,
@@ -148,7 +150,9 @@ pub mod prelude {
         kit_wait_quiet, main_port, registry_iterator, root_registry_entry, MAIN_PORT_DEFAULT,
     };
     pub use crate::io_message::{power_message_from_raw, IoMessage, PowerMessage};
-    pub use crate::io_notification_port::NotificationPort;
+    pub use crate::io_notification_port::{
+        DispatchQoS, DispatchQueue, NotificationPort, PortNotification,
+    };
     pub use crate::io_pm::{
         copy_assertions_by_process, copy_assertions_status, copy_battery_info,
         copy_cpu_power_status, copy_scheduled_power_events, copy_system_load_advisory_detailed,
@@ -165,7 +169,7 @@ pub mod prelude {
     pub use crate::io_service::{
         matching_service, matching_service_entry_id, matching_services, matching_services_iterator,
         name_matching_service, name_matching_services, name_matching_services_iterator,
-        MatchingDictionary, Service, BUSY_INTEREST, FIRST_MATCH_NOTIFICATION,
+        ExistingServices, MatchingDictionary, Service, BUSY_INTEREST, FIRST_MATCH_NOTIFICATION,
         FIRST_PUBLISH_NOTIFICATION, GENERAL_INTEREST, MATCHED_NOTIFICATION, PUBLISH_NOTIFICATION,
         SERVICE_INTERACTION_ALLOWED, SERVICE_PLANE, TERMINATED_NOTIFICATION,
     };

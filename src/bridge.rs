@@ -157,6 +157,14 @@ unsafe extern "C" {
     pub fn iokit_swift_notification_port_run_loop_source(port: *mut c_void) -> *mut c_void;
     /// Wraps the Swift bridge's `iokit_swift_notification_port_set_importance_receiver` entry point.
     pub fn iokit_swift_notification_port_set_importance_receiver(port: *mut c_void) -> i32;
+    pub fn iokit_swift_notification_port_raw(port: *mut c_void) -> *mut c_void;
+    pub fn iokit_swift_notification_port_schedule(port: *mut c_void, queue: *mut c_void) -> bool;
+    pub fn iokit_swift_notification_port_release_registration(
+        port: *mut c_void,
+        notifier: u32,
+        context: *mut c_void,
+        release: unsafe extern "C" fn(*mut c_void),
+    );
 
     /// Wraps the Swift bridge's `iokit_swift_connect_retain` entry point.
     pub fn iokit_swift_connect_retain(connect: *mut c_void) -> *mut c_void;
