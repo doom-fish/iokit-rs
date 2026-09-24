@@ -63,7 +63,7 @@ private let kMsgWillRestart: UInt32     = 3_758_097_168   // 0xE0000310
 typealias StreamEventCallback = @convention(c) (Int32, UnsafeRawPointer?, UnsafeMutableRawPointer) -> Void
 typealias StreamContextHook = @convention(c) (UnsafeMutableRawPointer?) -> Void
 
-private let streamQueueKey = DispatchSpecificKey<UnsafeMutableRawPointer>()
+private let streamQueueKey = DispatchSpecificKey<ObjectIdentifier>()
 
 private final class StreamContext {
     let onEvent: StreamEventCallback
@@ -99,11 +99,11 @@ private class StreamBridge {
     init(label: String, context: StreamContext) {
         self.context = context
         self.queue = DispatchQueue(label: label, qos: .default)
-        queue.setSpecific(key: streamQueueKey, value: Unmanaged.passUnretained(self).toOpaque())
+        queue.setSpecific(key: streamQueueKey, value: ObjectIdentifier(self))
     }
 
     var isOnQueue: Bool {
-        DispatchQueue.getSpecific(key: streamQueueKey) == Unmanaged.passUnretained(self).toOpaque()
+        DispatchQueue.getSpecific(key: streamQueueKey) == ObjectIdentifier(self)
     }
 
     func stopDelivery() {}
