@@ -1,6 +1,6 @@
 # iokit coverage audit (vs MacOSX26.2.sdk)
 
-> **What these numbers measure (checked for 0.6.0):** a self-selected sample of 300 symbols from IOKit's public user-space headers, generated against MacOSX26.2.sdk and not re-run against SDK 26.5 or 27.0. "100%" does not mean IOKit is wrapped: 72 VERIFIED rows are only raw `iokit::ffi` declarations (unsafe, no safe wrapper), and constants count the same as functions. Not in the safe API: notification-port scheduling (`IONotificationPortSetDispatchQueue`, the run-loop source is exposed only as a raw pointer) and notifications on caller-owned ports (the `async_api` streams own and drain their ports instead), `IORegistryEntrySetCFProperties`, asynchronous `IOConnectCall*` methods, memory mapping, `IODataQueue`, `IOCFPlugIn`, and CoreHID. `io_hid` overlaps the separate iohidmanager crate.
+> **What these numbers measure (checked for 0.6.0):** a self-selected sample of 300 symbols from IOKit's public user-space headers, generated against MacOSX26.2.sdk and not re-run against SDK 26.5 or 27.0. "100%" does not mean IOKit is wrapped: 68 VERIFIED rows are only raw `iokit::ffi` declarations, 43 more are backed only by `unsafe` Rust wrappers (the `io_hid` raw-pointer, callback, scheduling, activation and value functions, `Connect::set_notification_port`, `dispatch_callout_from_message`, `catalogue_get_data_raw` and `serialize_raw`), and constants count the same as functions. Not in the safe API: run-loop scheduling of notification ports (a port is scheduled on a dispatch queue with `NotificationPort::schedule_on`, and its run-loop source is exposed only as a raw pointer), driver notifications through `IOConnectSetNotificationPort` (`unsafe`: the driver's messages carry the callouts a scheduled port calls), `IORegistryEntrySetCFProperties`, asynchronous `IOConnectCall*` methods, memory mapping, `IODataQueue`, `IOCFPlugIn`, and CoreHID. `io_hid` overlaps the separate iohidmanager crate.
 
 > Scope note: IOKit.framework is too large for a complete one-pass diff, so this audit samples 300 public user-space symbols across `IOKitLib.h`, `IOPMLib.h`, `IOPowerSources.h`, `IOMessage.h`, `IOCFPlugIn.h`, `IOCFSerialize.h`, `IOCFUnserialize.h`, `IODataQueueClient.h`, `IOUserServer.h`, `IOHIDManager.h`, and `IOHIDDevice.h`. VERIFIED counts include both the high-level safe API and the default `raw-ffi` re-exports.
 
@@ -21,7 +21,7 @@ COVERAGE_PCT: 100.00%
 | `IONotificationPortGetRunLoopSource` | function | `IOKitLib.h` | `iokit::ffi::IONotificationPortGetRunLoopSource`; `iokit::NotificationPort::run_loop_source_raw` |
 | `IONotificationPortGetMachPort` | function | `IOKitLib.h` | `iokit::ffi::IONotificationPortGetMachPort`; `iokit::NotificationPort::mach_port` |
 | `IONotificationPortSetImportanceReceiver` | function | `IOKitLib.h` | `iokit::ffi::IONotificationPortSetImportanceReceiver`; `iokit::NotificationPort::set_importance_receiver` |
-| `IONotificationPortSetDispatchQueue` | function | `IOKitLib.h` | `iokit::ffi::IONotificationPortSetDispatchQueue` |
+| `IONotificationPortSetDispatchQueue` | function | `IOKitLib.h` | `iokit::ffi::IONotificationPortSetDispatchQueue`; `iokit::NotificationPort::schedule_on` |
 | `IOObjectRelease` | function | `IOKitLib.h` | `iokit::ffi::IOObjectRelease` |
 | `IOObjectRetain` | function | `IOKitLib.h` | `iokit::ffi::IOObjectRetain` |
 | `IOObjectGetClass` | function | `IOKitLib.h` | `iokit::ffi::IOObjectGetClass`; `iokit::Service::class_name` |
@@ -39,8 +39,8 @@ COVERAGE_PCT: 100.00%
 | `IOServiceGetMatchingService` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetMatchingService`; `iokit::matching_service` |
 | `IOServiceGetMatchingServices` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetMatchingServices`; `iokit::matching_services_iterator`; `iokit::matching_services` |
 | `IOServiceAddNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddNotification` |
-| `IOServiceAddMatchingNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddMatchingNotification`; `iokit::async_api::ServiceMatchStream` (`async` feature) |
-| `IOServiceAddInterestNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddInterestNotification`; `iokit::async_api::ServiceInterestStream` (`async` feature) |
+| `IOServiceAddMatchingNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddMatchingNotification`; `iokit::NotificationPort::add_matching_notification`; `iokit::async_api::ServiceMatchStream` (`async` feature) |
+| `IOServiceAddInterestNotification` | function | `IOKitLib.h` | `iokit::ffi::IOServiceAddInterestNotification`; `iokit::NotificationPort::add_interest_notification`; `iokit::async_api::ServiceInterestStream` (`async` feature) |
 | `IOServiceMatchPropertyTable` | function | `IOKitLib.h` | `iokit::ffi::IOServiceMatchPropertyTable` |
 | `IOServiceGetBusyState` | function | `IOKitLib.h` | `iokit::ffi::IOServiceGetBusyState`; `iokit::Service::busy_state` |
 | `IOServiceWaitQuiet` | function | `IOKitLib.h` | `iokit::ffi::IOServiceWaitQuiet`; `iokit::Service::wait_quiet` |

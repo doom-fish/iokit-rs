@@ -29,15 +29,57 @@ fn main() -> Result<()> {
 - `io_service` — service matching (by class, name, BSD name or entry ID, or with a `MatchingDictionary` for property and USB/HID vendor-product matching), class/bundle metadata, registry-style helpers, `set_property`, and `IOServiceOpen`.
 - `io_connect` — user-client connection handles plus scalar/struct method calls.
 - `io_registry` — registry path lookup, names, paths, properties, and traversal.
-- `io_notification_port` — notification port lifecycle, Mach-port access, and the run-loop source as a raw pointer (scheduling a port is not wrapped safely; use `async_api`).
+- `io_notification_port` — notification ports: scheduling on a dispatch queue, matching and interest registrations that own their callbacks, Mach-port access, and the run-loop source as a raw pointer.
 - `io_iterator` — iterator reset/validation, registry enter/exit, and typed service/registry iteration (iterators are not `Clone`, since copies would share the kernel cursor).
-- `io_hid` — `IOHIDManager` / `IOHIDDevice` wrappers for enumeration, properties, reports, and low-level callback registration.
+- `io_hid` — `IOHIDManager` / `IOHIDDevice` wrappers for enumeration, properties, reports, and low-level (`unsafe`) callback registration, scheduling and activation.
 - `io_pm` — `IOPMLib` snapshots, aggressiveness, thermal warning lookup, load advisory, and power assertions.
 - `io_cf` — `IOCFSerialize` / `IOCFUnserialize` helpers for CoreFoundation snapshots.
 - `iops` — power-source snapshots, provider type, battery warning, and time remaining.
 - `io_message` — typed wrappers for the public `IOMessage.h` constants.
 - `io_hi_backing_store` — compatibility stub documenting public-SDK unavailability.
 - `async_api` *(requires `async` feature)* — `BoundedAsyncStream`-based event streams for service interest, service match, power-source change, and system power notifications.
+
+## Notification ports
+
+A `NotificationPort` delivers matching and interest notifications to callbacks
+on a dispatch queue:
+
+```rust,no_run
+use iokit::prelude::*;
+
+fn main() -> Result<()> {
+    let port = NotificationPort::new()?;
+    let queue = DispatchQueue::new("com.example.iokit", DispatchQoS::Default);
+    port.schedule_on(&queue)?;
+    let registration = port.add_matching_notification(
+        MATCHED_NOTIFICATION,
+        &MatchingDictionary::class("IOUSBHostDevice"),
+        ExistingServices::Deliver,
+        |service| println!("matched {:?}", service.name()),
+    )?;
+    std::thread::sleep(std::time::Duration::from_secs(10));
+    drop(registration);
+    Ok(())
+}
+```
+
+- `schedule_on` works once per port. Callbacks run on a private serial queue
+  that targets the given queue (`DispatchQueue::main()` for the main thread);
+  until then, notifications wait in the port. Run-loop scheduling is not
+  wrapped: `run_loop_source_raw` is only a raw pointer, and a port scheduled
+  with `schedule_on` must not also be added to a run loop.
+- `add_matching_notification` and `add_interest_notification` return a
+  `PortNotification` that owns the callback. Dropping it releases the
+  notification on the delivery queue and frees the callback after that;
+  `IOKit` delivers nothing for a released notification. `ExistingServices::Deliver`
+  hands the services that already match to the callback before returning.
+- A registration keeps its port alive. The port is destroyed on its delivery
+  queue once its last handle and registration are gone. `NotificationPort` and
+  `PortNotification` are `Send + Sync`; share a port with `Arc`.
+- `Connect::set_notification_port` is `unsafe`: the driver's messages carry
+  callouts (a function pointer and its argument) that a scheduled port calls,
+  so the caller must ensure the driver only sends callouts that stay valid
+  while the port can deliver them.
 
 ## Async streams
 

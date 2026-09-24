@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Floating-point `CFNumber`s were read as `Integer` (2.0) or `Unknown` (1.5), and unsigned values above `i64::MAX` came back negative.
 - `Connect::call_scalar_method` and `call_method` sent a scalar count of 0 when the input slice length overflowed `u32`; they return `InvalidArgument`.
 - The raw `CFNumberGetValue` declaration took the number type as `i32`; the SDK's `CFNumberType` is a `CFIndex`. A test now pins it and the raw `IOServiceAddInterestNotification` signature (6 parameters, as in the SDK).
-- The README described 0.3.1 and claimed every stream drained callbacks before freeing its state; the coverage audits now state that they measure a self-selected sample in which 72 VERIFIED rows are raw FFI only.
+- The README described 0.3.1 and claimed every stream drained callbacks before freeing its state; the coverage audits now state that they measure a self-selected sample in which 68 VERIFIED rows are raw FFI only and 43 more have only `unsafe` wrappers.
 
 ### Changed
 
@@ -26,11 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `CFValue` reads floating-point numbers as `CFValue::Float` and unsigned values above `i64::MAX` as `CFValue::UnsignedInteger`.
 - **Breaking:** raw `iokit::ffi::CFNumberGetValue` takes a `CFIndex` number type, and `kCFNumberSInt64Type` is a `CFIndex`.
 - **Breaking:** zero-capacity stream subscriptions return `InvalidArgument`, and `ServiceMatchStream::subscribe` no longer rejects class names containing NUL (they match nothing).
+- **Breaking:** `Connect::set_notification_port` is `unsafe`. The driver's messages to the port carry callouts (a function pointer and its argument, built from the reference the caller passes) that the port calls once it is scheduled, and ports can now be scheduled from safe code.
+- **Breaking:** `HidManager::activate` and `cancel`, and `HidDevice::activate` and `cancel`, are `unsafe`. IOKit traps unless a dispatch queue was set first, which only the unsafe `set_dispatch_queue_raw` does, and activation starts the callbacks registered through the raw functions.
+- **Breaking:** `NotificationPort` no longer implements `Clone`, because clones would share its scheduling state. It is `Send + Sync`; share it with `Arc`.
+- `ServiceInterestEvent` moved to `io_notification_port` and `ExistingServices` to `io_service`; both are exported at the crate root and still re-exported from `async_api`.
 - `Service` and `RegistryEntry` are `Send + Sync`, so `ServiceMatchEvent` is `Send + Sync` without its former `unsafe impl` over a non-`Send` `Service`.
-- `rust-version` is 1.82; `apple-cf` is required at `>=0.11, <0.12` and `doom-fish-utils` at `>=0.4.1, <0.5`.
+- `rust-version` is 1.82; `apple-cf` is required at `>=0.11, <0.12` (with its `dispatch` feature) and `doom-fish-utils` at `>=0.4.1, <0.5`, which is no longer optional: the `async` feature only enables `async_api`.
 
 ### Added
 
+- Safe notification-port scheduling: `NotificationPort::schedule_on(&DispatchQueue)` schedules a port once, on a private serial queue that targets the given queue (`IONotificationPortSetDispatchQueue`). `DispatchQueue` and `DispatchQoS` are re-exported from apple-cf.
+- `NotificationPort::add_matching_notification` (with `ExistingServices`) and `add_interest_notification` return a `PortNotification` that owns its callback in a doom-fish-utils `CallbackContext`. Dropping it releases the notifier on the port's delivery queue and only then frees the callback, and IOKit delivers nothing for a released notifier; registrations keep their port alive, and the port is destroyed on its delivery queue. Callback panics are contained.
 - `MatchingDictionary`: the class, name, BSD-name and registry-entry-ID dictionaries IOKit's helpers build, arbitrary matching keys, `IOPropertyMatch` entries, and USB (`usb_device`) and HID (`hid_device`) vendor/product matching, with `first_service`, `services_iterator` and `services`. The key names are exported as `PROVIDER_CLASS_KEY`, `NAME_MATCH_KEY`, `PROPERTY_MATCH_KEY`, `BSD_NAME_KEY` and `REGISTRY_ENTRY_ID_KEY`.
 - `Service::set_property` and `RegistryEntry::set_property` (`IORegistryEntrySetCFProperty`).
 - `ServiceMatchStream::subscribe_matching` with `ExistingServices::Deliver`, which delivers the services that already match as `Matched` events.
@@ -39,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `impl Clone for ObjectIterator` and the Swift export it used.
+- `impl Clone for NotificationPort`.
 - The empty `include/IOKitBridge.h` bridge header (it declared nothing).
 
 ## [0.5.3] - 2026-05-20
