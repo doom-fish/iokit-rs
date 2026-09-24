@@ -189,12 +189,12 @@ impl HidManager {
     }
 
     /// Wraps `IOHIDManagerActivate`.
-    pub fn activate(&self) {
+    pub unsafe fn activate(&self) {
         unsafe { ffi_impl::IOHIDManagerActivate(self.as_raw()) };
     }
 
     /// Wraps `IOHIDManagerCancel`.
-    pub fn cancel(&self) {
+    pub unsafe fn cancel(&self) {
         unsafe { ffi_impl::IOHIDManagerCancel(self.as_raw()) };
     }
 
@@ -479,12 +479,12 @@ impl HidDevice {
     }
 
     /// Wraps `IOHIDDeviceActivate`.
-    pub fn activate(&self) {
+    pub unsafe fn activate(&self) {
         unsafe { ffi_impl::IOHIDDeviceActivate(self.as_raw()) };
     }
 
     /// Wraps `IOHIDDeviceCancel`.
-    pub fn cancel(&self) {
+    pub unsafe fn cancel(&self) {
         unsafe { ffi_impl::IOHIDDeviceCancel(self.as_raw()) };
     }
 
