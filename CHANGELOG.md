@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Connect::call_scalar_method` and `call_method` sent a scalar count of 0 when the input slice length overflowed `u32`; they return `InvalidArgument`.
 - The raw `CFNumberGetValue` declaration took the number type as `i32`; the SDK's `CFNumberType` is a `CFIndex`. A test now pins it and the raw `IOServiceAddInterestNotification` signature (6 parameters, as in the SDK).
 - The README described 0.3.1 and claimed every stream drained callbacks before freeing its state; the coverage audits now state that they measure a self-selected sample in which 68 VERIFIED rows are raw FFI only and 43 more have only `unsafe` wrappers.
+- `build.rs` no longer adds the toolchain's Swift 5.5 back-deployment directory (`usr/lib/swift-5.5/macosx`) to the link search path or the rpath. Its old `libswift_Concurrency.dylib` shadowed the SDK's `libswift_Concurrency.tbd` in every binary that depends on this crate, so linking failed next to a Swift bridge that uses newer concurrency APIs, such as apple-localauthentication's.
 
 ### Changed
 
