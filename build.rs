@@ -64,7 +64,7 @@ fn main() {
     }
 
     println!("cargo:rustc-link-search=native={swift_build_dir}/release");
-    println!("cargo:rustc-link-lib=static=IOKitBridge");
+    println!("cargo:rustc-link-lib=static:+whole-archive=IOKitBridge");
     println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
 
     match Command::new("xcode-select").arg("-p").output() {
