@@ -12,7 +12,7 @@ fn queries_main_port_and_registry_root() -> iokit::Result<()> {
     let Some(root) = root_registry_entry() else {
         panic!("IORegistryGetRootEntry returned MACH_PORT_NULL");
     };
-    assert!(!root.name()?.is_empty());
+    assert_ne!(root.name()?, "");
 
     let mut iterator = registry_iterator(SERVICE_PLANE, 0)?
         .expect("IORegistryCreateIterator returned a null iterator handle");

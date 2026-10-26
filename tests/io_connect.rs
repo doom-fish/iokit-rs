@@ -7,7 +7,7 @@ fn opens_power_management_connection() -> iokit::Result<()> {
 
     if let Some(service) = connect.get_service() {
         let class_name = service.class_name()?;
-        assert!(!class_name.is_empty());
+        assert_ne!(class_name, "");
     }
 
     Ok(())
