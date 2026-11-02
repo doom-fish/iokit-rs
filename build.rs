@@ -71,7 +71,7 @@ fn main() {
     assert!(!swift_bin_dir.is_empty(), "Swift product path is empty");
 
     println!("cargo:rustc-link-search=native={swift_bin_dir}");
-    println!("cargo:rustc-link-lib=static=IOKitBridge");
+    println!("cargo:rustc-link-lib=static:+whole-archive=IOKitBridge");
     println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
 
     match Command::new("xcode-select").arg("-p").output() {
