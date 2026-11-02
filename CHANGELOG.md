@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-11-02
+
 ### Fixed
 
 - Link the Swift bridge library with `+whole-archive`. This change prevents link errors in release builds with fat LTO (#1).
